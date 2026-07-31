@@ -1,0 +1,3585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MechaniX Power Tool v4.5</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1a6ef5" />
+<meta name="description" content="MechaniX Power Tool — Sleeper league data extraction and analysis" />
+
+<!-- iOS home-screen support (iOS ignores manifest.json, needs its own tags) -->
+<link rel="apple-touch-icon" href="icon-512.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MPT" />
+
+<!-- Android/Chrome home-screen icon fallback -->
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #f7f8fa;
+    --border: #d8dce4;
+    --border2: #c4c9d4;
+    --accent: #1a6ef5;
+    --accent2: #0f4fc2;
+    --accent-soft: #e8f0fe;
+    --text: #1a1d23;
+    --text2: #4a5068;
+    --text3: #7a8099;
+    --success: #12a05c;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Rajdhani', sans-serif;
+    --body: 'Exo 2', sans-serif;
+    --radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow2: 0 4px 20px rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── HEADER ── */
+  #app-header {
+    background: linear-gradient(135deg, #0d1117 0%, #161b26 60%, #1a2236 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  #app-header .logo {
+    font-family: var(--head);
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  #app-header .logo span { color: var(--accent); }
+  #app-header .version {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #5a6a8a;
+    margin-left: 10px;
+  }
+  #app-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #commissioner-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #8a9bc4;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* ── LAYOUT ── */
+  #main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 56px);
+    gap: 0;
+  }
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 48px;
+    width: 380px;
+    box-shadow: var(--shadow2);
+    text-align: center;
+  }
+  .login-card h2 {
+    font-family: var(--head);
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .login-card p {
+    color: var(--text3);
+    margin-bottom: 28px;
+    font-size: 13px;
+  }
+  .login-card input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    font-family: var(--body);
+    font-size: 14px;
+    background: var(--surface2);
+    color: var(--text);
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+  .login-card input:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%;
+    padding: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--head);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+  #login-error { color: var(--danger); font-size: 12px; margin-top: 10px; }
+
+  /* ── LEAGUE PICKER ── */
+  #league-screen { display: none; }
+  .section-title {
+    font-family: var(--head);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    letter-spacing: 0.3px;
+  }
+  .league-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .league-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .league-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-1px); }
+  .league-card.active { border-color: var(--accent); background: var(--accent-soft); }
+  .league-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .league-card .lc-info { flex: 1; min-width: 0; }
+  .league-card .lc-name {
+    font-family: var(--head);
+    font-weight: 600;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .league-card .lc-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* ── PROGRESS BAR ── */
+  #progress-wrap { display: none; margin-bottom: 20px; }
+  #progress-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; font-family: var(--mono); }
+  #progress-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #5b9af8);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  /* ── STATS STRIP ── */
+  #stats-strip {
+    display: none;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .stat-chip .sc-val {
+    font-family: var(--head);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-chip .sc-label { font-size: 11px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── TOOLBAR ── */
+  #toolbar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .btn-sm {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text2);
+    font-family: var(--body);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .btn-sm.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-sm.accent:hover { background: var(--accent2); border-color: var(--accent2); }
+  #toolbar-league-name {
+    font-family: var(--head);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    flex: 1;
+  }
+
+  /* ── GLOBAL PACKETS GRID ── */
+  #global-packets { display: none; margin-bottom: 28px; }
+  .packets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .packet-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .packet-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .packet-btn .pb-icon { font-size: 20px; }
+  .packet-btn .pb-label { font-family: var(--head); font-size: 14px; font-weight: 600; color: var(--text); }
+  .packet-btn .pb-desc { font-size: 11px; color: var(--text3); }
+
+  /* ── TEAMS TABLE ── */
+  #teams-section { display: none; margin-bottom: 28px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  thead th {
+    background: #f0f2f5;
+    padding: 10px 12px;
+    text-align: left;
+    font-family: var(--head);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 10px 12px; font-size: 13px; }
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--border);
+    color: var(--text2);
+  }
+  .rank-badge.gold { background: #fbbf24; color: #78350f; }
+  .rank-badge.silver { background: #d1d5db; color: #374151; }
+  .rank-badge.bronze { background: #d97706; color: #fff; }
+  .team-btns { display: flex; gap: 6px; }
+  .team-btns button {
+    padding: 4px 9px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-family: var(--body);
+    transition: all 0.1s;
+  }
+  .team-btns button:hover { border-color: var(--accent); color: var(--accent); }
+  .record { font-family: var(--mono); font-size: 12px; }
+  .pts { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+
+  /* ── MODAL ── */
+  #modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    overflow-y: auto;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal-box {
+    background: var(--surface);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 760px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+  }
+  #modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #modal-title {
+    font-family: var(--head);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  #modal-actions { display: flex; gap: 8px; }
+  #modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-close:hover { background: var(--border); }
+  #modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+  #modal-textarea {
+    width: 100%;
+    min-height: 420px;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 16px 20px;
+    background: #1a1d23;
+    color: #c9d1e0;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+  #copy-status {
+    font-size: 12px;
+    color: var(--success);
+    font-family: var(--mono);
+    min-width: 80px;
+    text-align: right;
+    align-self: center;
+  }
+
+  /* ── MISC ── */
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 600;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid #c5d8fd;
+  }
+  .tag.pos-QB { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .tag.pos-RB { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+  .tag.pos-WR { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+  .tag.pos-TE { background: #fce7f3; color: #9d174d; border-color: #fbcfe8; }
+  .tag.pos-K  { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
+  .tag.pos-DEF { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+  .tag.pos-FLEX, .tag.pos-SUPER_FLEX { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    color: var(--text3);
+    font-size: 14px;
+  }
+  .empty-state .es-icon { font-size: 36px; margin-bottom: 12px; }
+  .loader {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .info-row { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 8px; }
+  .info-kv { font-size: 13px; }
+  .info-kv .k { color: var(--text3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; font-family: var(--mono); }
+  .info-kv .v { font-weight: 600; }
+
+  /* Section within modal */
+  .modal-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-section:last-child { border-bottom: none; }
+  .modal-section h4 { font-family: var(--head); font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .roster-group { margin-bottom: 14px; }
+  .roster-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 6px; font-family: var(--mono); }
+  .roster-player { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .roster-player:last-child { border-bottom: none; }
+  .roster-player .rp-name { flex: 1; font-weight: 500; }
+  .roster-player .rp-team { color: var(--text3); font-size: 11px; font-family: var(--mono); min-width: 32px; }
+  .roster-player .rp-pts { font-family: var(--mono); font-size: 12px; color: var(--text2); min-width: 50px; text-align: right; }
+  .roster-player .rp-proj { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 50px; text-align: right; }
+  .roster-player .rp-age { font-size: 11px; color: var(--text3); min-width: 30px; text-align: center; }
+  .roster-player .rp-exp { font-size: 11px; color: var(--text3); min-width: 25px; text-align: center; }
+  .col-hdr { display: flex; gap: 8px; padding: 4px 0; border-bottom: 2px solid var(--border); margin-bottom: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-family: var(--mono); }
+  .col-hdr .rp-name { flex: 1; }
+
+  .matchup-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .matchup-row:last-child { border-bottom: none; }
+  .matchup-row .mu-week { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 48px; }
+  .matchup-row .mu-teams { flex: 1; text-align: center; }
+  .matchup-row .mu-score { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .mu-win { color: var(--success); }
+  .mu-loss { color: var(--danger); }
+
+  .trans-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .trans-row:last-child { border-bottom: none; }
+  .trans-row .tr-type { min-width: 60px; }
+  .trans-row .tr-detail { flex: 1; color: var(--text2); }
+  .trans-row .tr-date { font-family: var(--mono); font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+  .fa-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .fa-row:last-child { border-bottom: none; }
+  .fa-row .fa-num { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 20px; }
+  .fa-row .fa-name { flex: 1; font-weight: 500; }
+  .fa-row .fa-team { color: var(--text3); font-size: 11px; font-family: var(--mono); min-width: 32px; }
+  .fa-row .fa-proj { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 60px; text-align: right; }
+
+  .pick-row { display: flex; gap: 10px; padding: 5px 0; font-size: 12px; border-bottom: 1px solid var(--border); align-items: center; }
+  .pick-row:last-child { border-bottom: none; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .login-card { width: 100%; padding: 28px 20px; }
+    thead th, tbody td { padding: 8px; font-size: 12px; }
+    .packets-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="app-header">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="logo">MechaniX <span>Power Tool</span></div>
+    <div class="version">v4.5</div>
+  </div>
+  <div class="header-right">
+    <div id="commissioner-badge" style="display:none;"></div>
+    <button class="btn-sm" id="btn-logout" style="display:none;font-size:12px;">← Logout</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <div class="login-card">
+      <h2>Commissioner Login</h2>
+      <p>Enter your Sleeper username to load your leagues</p>
+      <input type="text" id="username-input" placeholder="Sleeper username" autocomplete="off" autocapitalize="none" />
+      <button class="btn-primary" id="btn-login">Load Leagues</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- LEAGUE PICKER -->
+  <div id="league-screen">
+    <div class="section-title" id="league-screen-title">Your Leagues</div>
+    <div class="league-grid" id="league-grid"></div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="progress-wrap">
+    <div id="progress-label">Loading league data…</div>
+    <div id="progress-track"><div id="progress-bar"></div></div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <div id="toolbar-league-name"></div>
+    <button class="btn-sm" id="btn-change-league">↩ Change League</button>
+    <button class="btn-sm accent" id="btn-json-download">⬇ JSON</button>
+    <button class="btn-sm" id="btn-json-light" style="border-color:#12a05c;color:#12a05c;">⬇ JSON Light</button>
+    <button class="btn-sm" id="btn-draft-json" style="display:none;border-color:#d97706;color:#d97706;">🟠 Draft JSON v2</button>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div id="stats-strip">
+    <div class="stat-chip"><div class="sc-val" id="ss-teams">—</div><div class="sc-label">Teams</div></div>
+    <div class="stat-chip"><div class="sc-val" id="ss-season">—</div><div class="sc-label">Season</div></div>
+    <div class="stat-chip"><div class="sc-val" id="ss-week">—</div><div class="sc-label">Current Week</div></div>
+    <div class="stat-chip"><div class="sc-val" id="ss-scoring">—</div><div class="sc-label">Scoring</div></div>
+    <div class="stat-chip"><div class="sc-val" id="ss-type">—</div><div class="sc-label">Format</div></div>
+  </div>
+
+  <!-- GLOBAL PACKETS -->
+  <div id="global-packets">
+    <div class="section-title">League Packets</div>
+    <div class="packets-grid">
+      <button class="packet-btn" onclick="openGlobalPacket('info')"><div class="pb-icon">🏈</div><div class="pb-label">League Info</div><div class="pb-desc">Settings & structure</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('standings')"><div class="pb-icon">📊</div><div class="pb-label">Standings</div><div class="pb-desc">Rankings & records</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('matchups')"><div class="pb-icon">⚔️</div><div class="pb-label">Matchups</div><div class="pb-desc">All weeks history</div></button>
+      <button class="packet-btn" onclick="openRostersMenu()"><div class="pb-icon">📋</div><div class="pb-label">All Rosters</div><div class="pb-desc">Every team's players</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('fa')"><div class="pb-icon">🎯</div><div class="pb-label">Free Agents</div><div class="pb-desc">Top unrostered players</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('transactions')"><div class="pb-icon">🔄</div><div class="pb-label">Transactions</div><div class="pb-desc">Recent moves</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('draft')"><div class="pb-icon">🃏</div><div class="pb-label">Draft Picks</div><div class="pb-desc">Future pick assets</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('power')"><div class="pb-icon">⚡</div><div class="pb-label">Power Rankings</div><div class="pb-desc">Rank by pts + proj</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('prevseason')"><div class="pb-icon">📅</div><div class="pb-label">Prior Season</div><div class="pb-desc">Y-1 standings & matchups</div></button>
+      <button class="packet-btn" onclick="openGlobalPacket('ageprofile')"><div class="pb-icon">📈</div><div class="pb-label">Age / Exp Profile</div><div class="pb-desc">Roster age & experience</div></button>
+    </div>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+      <label style="font-size:13px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="toggle-condensed" onchange="STATE.condensedStats=this.checked" style="cursor:pointer;" />
+        Condensed stat lines (key fields only)
+      </label>
+    </div>
+  </div>
+
+  <!-- TEAMS TABLE -->
+  <div id="teams-section">
+    <div class="section-title">Teams</div>
+    <table id="teams-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>Owner</th>
+          <th>Record</th>
+          <th>PF</th>
+          <th>PA</th>
+          <th>Streak</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="teams-tbody"></tbody>
+    </table>
+  </div>
+
+</div><!-- /main -->
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div id="modal-header">
+      <div id="modal-title">Packet</div>
+      <div id="modal-actions">
+        <span id="copy-status"></span>
+        <button class="btn-sm" id="btn-copy-packet">📋 Copy</button>
+        <button id="modal-close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <div id="modal-body">
+      <textarea id="modal-textarea" spellcheck="false" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let STATE = {
+  username: '',
+  userId: '',
+  leagues: [],
+  activeLeague: null,
+  leagueUsers: {},      // user_id -> user obj
+  rosters: [],
+  matchupsByWeek: {},   // week -> []
+  transactions: [],
+  tradedPicks: [],
+  draftedPicks: {},     // v2.3: player_id -> { season, round, pick_no, draft_slot } draft capital (current + walked-back prior season)
+  draftInfo: null,
+  playerDB: {},         // player_id -> player obj
+  projections: {},      // player_id -> projected pts (upcoming season week)
+  playerStats: {},      // player_id -> total scored pts (prior season)
+  scoringMap: {},       // position_type -> multiplier map
+  currentWeek: 1,
+  currentSeason: '',    // projSeason e.g. "2026"
+  statsSeason: '',      // statsSeason e.g. "2025" (currentSeason - 1)
+  auctionCosts: {},     // player_id -> { cost, roster_id } from all-weeks transactions
+  playerStatSplits: {}, // player_id -> { rush_att, rush_yd, rec_tgt, rec, rec_yd, snap_cnt, pass_att, pass_cmp, pass_yd, pass_td, sack, solo_tackle, idp_int }
+  statsHistory: {},     // player_id -> { [season]: { gp, pts } } for current + 2 prior seasons (v2.1)
+  condensedStats: false,// toggle: condensed stat lines in packets
+  prevSeasonData: {     // Y-1 league data via previous_league_id chain
+    standings: [],      // array of {roster_id, teamName, owner, wins, losses, ties, fpts, fpts_decimal, fpts_against, fpts_against_decimal}
+    matchups: {},       // week -> array
+    leagueId: null,
+    rosters: [],        // raw prior season rosters (for owner mapping)
+    users: {},          // user_id -> user obj
+  },
+  rookieClass: {},      // v2.7: player_id -> rookie player obj (years_exp === 0), built on demand
+  weeklyPts: {},         // v2.8: player_id -> { week_num: pts } for statsSeason, for trend tracking
+};
+
+// ══════════════════════════════════════════════
+//  SLEEPER API HELPERS
+// ══════════════════════════════════════════════
+const API = 'https://api.sleeper.app/v1';
+const PROJ_API = 'https://api.sleeper.app/projections/nfl';
+const STATS_API = 'https://api.sleeper.app/stats/nfl';
+
+async function sleeperGet(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error(`API error: ${res.status} ${path}`);
+  return res.json();
+}
+
+// Player DB with 24h localStorage cache
+async function fetchPlayerDB() {
+  const CACHE_KEY = 'spt_playerdb';
+  const CACHE_TS  = 'spt_playerdb_ts';
+  const TTL = 86400000; // 24h
+  const ts = parseInt(localStorage.getItem(CACHE_TS) || '0');
+  if (Date.now() - ts < TTL) {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch(e) {}
+  }
+  const res = await fetch('https://api.sleeper.app/v1/players/nfl');
+  const db = await res.json();
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(db));
+    localStorage.setItem(CACHE_TS, String(Date.now()));
+  } catch(e) {}
+  return db;
+}
+
+async function fetchProjections(season, week) {
+  try {
+    const res = await fetch(`${PROJ_API}/${season}/${week}?season_type=regular`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    // data is array of {player_id, stats:{...}}
+    const map = {};
+    for (const p of (data || [])) {
+      if (p.player_id) map[p.player_id] = p.stats || {};
+    }
+    return map;
+  } catch(e) { return {}; }
+}
+
+// v2.3: IDP tackle stat key normalization. Sleeper's stats payload uses idp_tkl_solo/idp_tkl_ast
+// as the canonical split, but some league/season payloads only carry a combined 'idp_tkl' key
+// (no solo/ast split) or use 'idp_tkl_assist' instead of 'idp_tkl_ast'. This backfills the
+// canonical keys when the alternates are present and the canonical key is missing, so downstream
+// scoring/accumulation doesn't silently drop IDP tackle production. NOTE: this is a best-effort
+// normalization based on known Sleeper alternates, not a guarantee every league-type variant is covered.
+function normalizeIdpStatKeys(statsObj) {
+  if (!statsObj) return statsObj;
+  if (statsObj.idp_tkl_solo === undefined && statsObj.idp_tkl !== undefined) {
+    statsObj.idp_tkl_solo = statsObj.idp_tkl;
+  }
+  if (statsObj.idp_tkl_ast === undefined && statsObj.idp_tkl_assist !== undefined) {
+    statsObj.idp_tkl_ast = statsObj.idp_tkl_assist;
+  }
+  return statsObj;
+}
+
+async function fetchStats(season, week) {
+  try {
+    const res = await fetch(`${STATS_API}/${season}/${week}?season_type=regular`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    const map = {};
+    for (const p of (data || [])) {
+      if (p.player_id) map[p.player_id] = normalizeIdpStatKeys(p.stats || {});
+    }
+    return map;
+  } catch(e) { return {}; }
+}
+
+function getScoringLabel(lg) {
+  const sc = lg.scoring_settings || {};
+  const pos = lg.roster_positions || [];
+  const hasIDP = pos.some(p => ['DL','LB','DB','IDP_FLEX'].includes(p));
+  const recVal = sc.rec;
+  let base = recVal === 1 ? 'PPR' : recVal === 0.5 ? 'Half-PPR' : 'Standard';
+  if (hasIDP) base += '+IDP';
+  // Check for any non-standard scoring keys beyond basic rec/pass/rush/rec stats
+  const customKeys = Object.keys(sc).filter(k => !['rec','pass_yd','pass_td','rush_yd','rush_td','rec_yd','rec_td','pass_int','fum_lost','bonus_rec_te','pass_2pt','rush_2pt','rec_2pt'].includes(k));
+  if (customKeys.length > 0 && !hasIDP) base = 'Custom ' + base;
+  else if (hasIDP) base = 'Custom ' + base;
+  return base;
+}
+function scoreStats(statsObj, scoringMap) {
+  if (!statsObj || !scoringMap) return 0;
+  let pts = 0;
+  for (const [key, mult] of Object.entries(scoringMap)) {
+    if (statsObj[key] !== undefined) pts += statsObj[key] * mult;
+  }
+  return Math.round(pts * 100) / 100;
+}
+
+function buildScoringMap(league) {
+  const map = {};
+  const sp = league.scoring_settings || {};
+  for (const [k, v] of Object.entries(sp)) {
+    if (v !== 0) map[k] = v;
+  }
+  return map;
+}
+
+// v2.1: Build games_played_history / pts_history / durability_flag for a player from STATE.statsHistory
+// v2.2: Also builds season_stat_history (position-specific basic stats, 3 seasons)
+const POS_STAT_KEYS = {
+  QB:  ['pass_yd','pass_td','pass_int','rush_yd','rush_td'],
+  RB:  ['rush_att','rush_yd','rush_td','rec','rec_yd','kr_yd','pr_yd'],
+  WR:  ['rec','rec_yd','rec_td','kr_yd','pr_yd'],
+  TE:  ['rec','rec_yd','rec_td'],
+  LB:  ['idp_tkl_solo','idp_tkl_ast','idp_sack','idp_int','idp_ff'],
+  DL:  ['idp_tkl_solo','idp_tkl_ast','idp_sack','idp_int','idp_ff'],
+  DB:  ['idp_tkl_solo','idp_tkl_ast','idp_sack','idp_int','idp_ff'],
+  K:   ['fgm','fga','xpm'],
+  // v4.3: team-defense scoring fields, added so season_stat_history.stats is no longer
+  // always null for DEF (see buildDurabilityProfile). Not used to gate games-played —
+  // see the v4.3 DEF carve-out in the didPlay checks below, since a defense can record
+  // zero of these events in a real, fully-played game.
+  DEF: ['sack','int','fum_rec','ff','safe','blk_kick','def_td'],
+};
+// v3.7: Sleeper's weekly stats payload omits 'gp' for untracked positions (OL, FB, LS, G, T, C, NT, P).
+// The old fallback (any non-empty stats object = played) falsely inflated games-played counts for
+// these positions, since inactive/practice-squad weeks can still produce a non-empty stats object.
+// Fix: only trust key-presence as a "played" signal for positions we actually track stats for.
+function isTrackedStatPosition(pos) {
+  const posKey = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+  return !!POS_STAT_KEYS[posKey];
+}
+function buildDurabilityProfile(pid, pos) {
+  const hist = STATE.statsHistory[pid];
+  const histSeasons = [
+    parseInt(STATE.statsSeason),
+    parseInt(STATE.statsSeason) - 1,
+    parseInt(STATE.statsSeason) - 2,
+  ];
+  const [curY, priorY, twoAgoY] = histSeasons.map(String);
+  const gpCur = hist?.[curY]?.gp;
+  const gpPrior = hist?.[priorY]?.gp;
+  const gpTwoAgo = hist?.[twoAgoY]?.gp;
+  // v3.11: renamed 'current_season' -> 'most_recent_season' in games_played_history/pts_history/
+  // season_stat_history. These 3 keys are anchored to STATE.statsSeason (currentSeason - 1), so the
+  // old 'current_season' label actually meant "most recent completed season" (e.g. 2025 when the real
+  // current season is 2026) — which collided in meaning with the separate top-level pts_prior_season
+  // field (also 2025), even though the two were never wired together incorrectly. Renaming removes the
+  // false-mismatch confusion without changing any values.
+  const games_played_history = {
+    most_recent_season: gpCur !== undefined ? gpCur : null,
+    prior_season: gpPrior !== undefined ? gpPrior : null,
+    two_seasons_ago: gpTwoAgo !== undefined ? gpTwoAgo : null,
+  };
+  const pts_history = {
+    most_recent_season: hist?.[curY]?.pts !== undefined ? hist[curY].pts : null,
+    prior_season: hist?.[priorY]?.pts !== undefined ? hist[priorY].pts : null,
+    two_seasons_ago: hist?.[twoAgoY]?.pts !== undefined ? hist[twoAgoY].pts : null,
+  };
+  // Durability flag: based on games missed in current + prior season (17-game season assumed)
+  let durability_flag = 'insufficient_data';
+  if (gpCur !== undefined && gpPrior !== undefined) {
+    const missedCur = Math.max(0, 17 - gpCur);
+    const missedPrior = Math.max(0, 17 - gpPrior);
+    if (missedCur >= 3 && missedPrior >= 3) {
+      durability_flag = 'chronic';
+    } else if (missedCur >= 4 && missedPrior <= 1 && gpTwoAgo !== undefined && (17 - gpTwoAgo) <= 1) {
+      durability_flag = 'injury_isolated';
+    } else if (missedCur >= 3 || missedPrior >= 3) {
+      durability_flag = 'watch';
+    } else {
+      durability_flag = 'stable';
+    }
+  }
+  // v2.2: season_stat_history — position-specific basic stats for all 3 seasons
+  // Maps DE/DT -> DL, CB -> DB for IDP position key lookup
+  const posKey = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+  const statKeys = POS_STAT_KEYS[posKey] || null;
+  const season_stat_history = histSeasons.map((yr, i) => {
+    const yStr = String(yr);
+    const label = i === 0 ? 'most_recent_season' : i === 1 ? 'prior_season' : 'two_seasons_ago';
+    const entry = hist?.[yStr];
+    if (!entry) return { season: yStr, label, gp: null, stats: null };
+    const stats = {};
+    if (statKeys && entry.acc) {
+      for (const k of statKeys) {
+        stats[k] = entry.acc[k] ? Math.round(entry.acc[k] * 10) / 10 : 0;
+      }
+    }
+    return { season: yStr, label, gp: entry.gp || 0, stats: statKeys ? stats : null };
+  });
+  return { games_played_history, pts_history, durability_flag, season_stat_history };
+}
+
+// v2.8: Injury freshness flag. Sleeper's player object carries injury_status
+// (e.g. "Questionable", "IR") but no built-in signal for whether that tag is
+// current news or a stale leftover from weeks ago. This checks injury_start_date
+// first (when Sleeper provides it), falling back to news_updated (epoch ms) as
+// the next-best signal of when the player's record last changed. If neither
+// date is present, returns 'unknown_no_date' rather than guessing — never
+// fabricate a freshness read with no timestamp to back it.
+function buildInjuryFreshness(pid) {
+  const p = STATE.playerDB[pid];
+  if (!p) return null;
+  const status = p.injury_status || null;
+  if (!status) return { status: null, freshness: 'healthy', days_since_update: null };
+  let refDateMs = null;
+  if (p.injury_start_date) {
+    const d = new Date(p.injury_start_date);
+    if (!isNaN(d.getTime())) refDateMs = d.getTime();
+  }
+  if (refDateMs === null && p.news_updated) {
+    const n = parseInt(p.news_updated, 10);
+    if (!isNaN(n)) refDateMs = n;
+  }
+  if (refDateMs === null) {
+    return { status, freshness: 'unknown_no_date', days_since_update: null };
+  }
+  const daysSince = Math.floor((Date.now() - refDateMs) / 86400000);
+  let freshness;
+  if (daysSince < 0) freshness = 'unknown_no_date'; // future-dated source data, don't trust it
+  else if (daysSince <= 3) freshness = 'fresh';      // reported in the last 3 days — treat as current
+  else if (daysSince <= 14) freshness = 'active';    // within 2 weeks — still likely relevant
+  else freshness = 'stale';                          // tag hasn't moved in 14+ days — verify before trusting
+  return { status, freshness, days_since_update: daysSince };
+}
+
+// v2.8: Weekly trend tracking. Compares a player's last 3 played weeks (of
+// STATE.weeklyPts, drawn from statsSeason) against their full-season weekly
+// average to flag whether they finished the season hot, cooling off, or
+// steady. Needs at least 4 played weeks on record to compare a meaningful
+// "recent" window against a season baseline — below that, returns
+// 'insufficient_data' rather than guessing a trend off 1-2 data points.
+function buildWeeklyTrend(pid) {
+  const weeks = STATE.weeklyPts[pid];
+  if (!weeks) return { trend: 'insufficient_data', recent_avg: null, season_avg: null, weeks_played: 0 };
+  const playedWeeks = Object.keys(weeks).map(Number).sort((a, b) => a - b);
+  if (playedWeeks.length < 4) {
+    return { trend: 'insufficient_data', recent_avg: null, season_avg: null, weeks_played: playedWeeks.length };
+  }
+  const allPts = playedWeeks.map(w => weeks[w]);
+  const seasonAvg = allPts.reduce((s, v) => s + v, 0) / allPts.length;
+  const last3 = playedWeeks.slice(-3).map(w => weeks[w]);
+  const recentAvg = last3.reduce((s, v) => s + v, 0) / last3.length;
+  let trend;
+  if (seasonAvg === 0) {
+    trend = recentAvg > 0 ? 'trending_up' : 'insufficient_data';
+  } else if (recentAvg >= seasonAvg * 1.15) {
+    trend = 'trending_up';
+  } else if (recentAvg <= seasonAvg * 0.85) {
+    trend = 'trending_down';
+  } else {
+    trend = 'steady';
+  }
+  return {
+    trend,
+    recent_avg: Math.round(recentAvg * 100) / 100,
+    season_avg: Math.round(seasonAvg * 100) / 100,
+    weeks_played: playedWeeks.length,
+  };
+}
+
+// v2.8: FAAB efficiency tracker. Aggregates STATE.auctionCosts (FAAB bids /
+// auction costs already resolved per player from transactions, keyed by
+// player_id -> { cost, roster_id }) against STATE.playerStats (statsSeason
+// points scored) to surface $ spent vs. points returned, per roster.
+// NOTE: STATE.auctionCosts also captures startup-auction costs in auction-
+// format leagues (not just in-season FAAB waiver wins) — this reflects the
+// existing field's scope, not a new ambiguity introduced here. pts_per_dollar
+// is left null (never 0) when a roster has $0 tracked spend, to avoid a
+// division-by-zero standing in as a real efficiency score.
+function buildFaabEfficiency() {
+  const rosterMap = {};
+  STATE.rosters.forEach(r => { rosterMap[r.roster_id] = r; });
+  const byRoster = {};
+  for (const [pid, info] of Object.entries(STATE.auctionCosts)) {
+    const rid = info?.roster_id;
+    if (rid === undefined || rid === null) continue;
+    if (!byRoster[rid]) byRoster[rid] = { roster_id: rid, total_spent: 0, total_pts: 0, player_count: 0, players: [] };
+    const cost = info.cost || 0;
+    const pts = STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null;
+    byRoster[rid].total_spent += cost;
+    byRoster[rid].player_count += 1;
+    if (pts !== null) byRoster[rid].total_pts += pts;
+    const p = STATE.playerDB[pid] || {};
+    byRoster[rid].players.push({
+      player_id: pid,
+      name: p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid),
+      cost,
+      pts_scored: pts,
+    });
+  }
+  const result = Object.values(byRoster).map(r => {
+    const teamName = rosterMap[r.roster_id] ? getRosterOwner(rosterMap[r.roster_id]).teamName : `Roster ${r.roster_id}`;
+    return {
+      roster_id: r.roster_id,
+      team_name: teamName,
+      total_spent: Math.round(r.total_spent * 100) / 100,
+      total_pts: Math.round(r.total_pts * 100) / 100,
+      player_count: r.player_count,
+      pts_per_dollar: r.total_spent > 0 ? Math.round((r.total_pts / r.total_spent) * 100) / 100 : null,
+      players: r.players.sort((a, b) => (b.pts_scored || 0) - (a.pts_scored || 0)),
+    };
+  });
+  result.sort((a, b) => (b.pts_per_dollar ?? -1) - (a.pts_per_dollar ?? -1));
+  return result;
+}
+
+// ══════════════════════════════════════════════
+//  v2.7: SHARED DRAFT-VALUE HELPERS
+//  Used by keeper/draft-value calculator, live draft tracking,
+//  and rookie class layer. NOTE: prior memory referenced these as
+//  "already started" — they were NOT present in the v2.6 codebase.
+//  Built fresh here; flagging that discrepancy per data-integrity rule.
+// ══════════════════════════════════════════════
+
+// Parse a pick label like "1.07" or "2.12" into { round, slot }.
+// Returns null if the label doesn't match the expected R.SS format.
+function parsePickLabel(label) {
+  if (!label || typeof label !== 'string') return null;
+  const m = label.trim().match(/^(\d+)\.(\d{1,2})$/);
+  if (!m) return null;
+  return { round: parseInt(m[1], 10), slot: parseInt(m[2], 10) };
+}
+
+// Estimate the trade value of a draft pick (current or future, own or traded).
+// Reuses the existing pick-decay formula already standing for computeDraftCapital-
+// style ledgers: 100 * 0.45^(round-1) * 0.9^yearsOut, then nudges by slot position
+// within the round (early-round-1 picks worth meaningfully more than late ones;
+// the gap narrows in later rounds).
+// Params: { season, round, slot, totalRosters, currentSeason }
+// All params except round are optional; missing slot/totalRosters skips the
+// within-round adjustment rather than fabricating a default rank.
+function pickEstimatedValue({ season, round, slot, totalRosters, currentSeason, totalRounds } = {}) {
+  if (!round || round < 1) return null; // no fabricated values without a round
+  const yearsOut = (season && currentSeason) ? Math.max(0, parseInt(season, 10) - parseInt(currentSeason, 10)) : 0;
+  // v3.7: decay rate solved from the draft's actual totalRounds instead of a fixed 0.45 constant.
+  // The fixed rate was never calibrated against round count: in a 25-round league it was already
+  // crushed to sub-1 "noise" by round ~10 and rounded to a flat 0.00 for every pick round 14+
+  // (100 * 0.45^13 = 0.003, underflows at 2-decimal rounding). Root-caused against live draft data
+  // before this fix — see round-by-round verification in conversation.
+  // Anchors: round 1 = 100 (unchanged, matches the existing PICK_TO_PLAYER_VALUE_SCALE assumption),
+  // last round = 1.0 (a 100x span top to bottom). Solved as r = 0.01^(1/(totalRounds-1)) so every
+  // round stays distinct and nonzero regardless of league length (24-round, 25-round, 38-round, etc).
+  // Falls back to the original 0.45 rate only when totalRounds isn't known at the call site (e.g.
+  // scoring a traded future-season pick, where that season's draft may not be configured yet) —
+  // never guesses a round count.
+  const decayRate = (totalRounds && totalRounds > 1) ? Math.pow(0.01, 1 / (totalRounds - 1)) : 0.45;
+  let base = 100 * Math.pow(decayRate, round - 1) * Math.pow(0.9, yearsOut);
+  let withinRoundAdj = 1;
+  if (slot && totalRosters && totalRosters > 1) {
+    // Linear taper from 1.15x (pick .01) to 0.90x (last slot in round), tighter in later rounds
+    const taperRange = round === 1 ? 0.25 : round === 2 ? 0.15 : 0.07;
+    const frac = (slot - 1) / (totalRosters - 1); // 0 at top of round, 1 at bottom
+    withinRoundAdj = 1 + (taperRange / 2) - (frac * taperRange);
+  }
+  return Math.round(base * withinRoundAdj * 100) / 100;
+}
+
+// v3.1: Draft pick values from pickEstimatedValue() live on a 0-100ish scale,
+// while player values from getPlayerValue() live on a season-points scale
+// (commonly 150-300+ for starters). Combining raw pick + player values on the
+// same trade side (scoreTradeSide, buildKeeperValueRow) silently understated
+// every pick's real weight relative to players. This scales pick value onto
+// the player-value scale before combining. Multiplier derived empirically:
+// a true 1st-round pick (~100 raw) should land near a low-end starter
+// (~180 player-scale), so 100 * 1.8 = 180.
+const PICK_TO_PLAYER_VALUE_SCALE = 1.8;
+function scaledPickValue(pickInfo) {
+  const raw = pickEstimatedValue(pickInfo);
+  if (raw === null) return null;
+  return Math.round(raw * PICK_TO_PLAYER_VALUE_SCALE * 100) / 100;
+}
+
+// Estimate a player's current trade/keeper value on a 0-100ish scale, anchored
+// to projected points for the upcoming season plus a durability/recency check.
+// This is intentionally simple and transparent (no hidden weighting tiers) so
+// it can be sanity-checked against STATE data directly. Returns null (never 0
+// or a guessed number) when projection data is missing for the player.
+// v3.1: Core valuation logic moved into getPlayerValueDetail() to support a
+// fallback path (prior-season stats + recent-trend adjustment) for the
+// offseason gap when STATE.projections has nothing yet. getPlayerValue()
+// remains a thin wrapper returning just the number, so existing callers are
+// unaffected.
+function getPlayerValueDetail(pid) {
+  if (!pid) return null;
+  const p = STATE.playerDB[pid] || {};
+  let value = null;
+  let basis = null;
+  let isEstimated = false;
+  const proj = STATE.projections[pid];
+  // v3.2 fix: Sleeper returns a literal 0 (not null/undefined) for IDP/K
+  // projections — a known platform-wide gap, not missing data in the usual
+  // sense. The original check only treated null/undefined as "missing", so
+  // IDP/K player_value silently came out as 0 instead of using the fallback.
+  // Treating a falsy (0) projection the same as missing routes IDP/K through
+  // the prior-season-adjusted fallback like any other unprojected player.
+  if (proj !== undefined && proj !== null && proj !== 0) {
+    value = proj;
+    basis = 'season_projection';
+    // v3.5 fix: Sleeper's season projections never include return yardage (kr_yd/pr_yd)
+    // for ANY player — it's not part of their projection model, not a per-player gap.
+    // A returner's full value was silently dropping out here (e.g. a player projected
+    // purely on WR/RB role while their actual prior-season return production, now
+    // correctly captured via ACCUM_STAT_KEYS, went unused). Add an estimated per-season
+    // return-yard point total on top of the role projection, using the most recent
+    // season with recorded return stats, scaled to a per-week-then-back-to-season basis
+    // to match how `proj` (currently a per-week figure) combines with downstream usage.
+    const hist = STATE.statsHistory[pid];
+    if (hist) {
+      const seasonsDesc = Object.keys(hist).sort((a, b) => b - a);
+      for (const yr of seasonsDesc) {
+        const acc = hist[yr]?.acc;
+        const krYd = acc?.kr_yd || 0;
+        const prYd = acc?.pr_yd || 0;
+        if (krYd || prYd) {
+          const krPts = krYd * (STATE.scoringMap.kr_yd || 0);
+          const prPts = prYd * (STATE.scoringMap.pr_yd || 0);
+          const gp = hist[yr]?.gp || 17;
+          value += (krPts + prPts) / gp; // per-week return-yard rate, added to per-week proj
+          basis = 'season_projection_plus_return_yardage';
+          break; // most recent season with return data wins
+        }
+      }
+    }
+  } else {
+    // Fallback: no season-long projection available yet (offseason gap before
+    // Sleeper releases them). Use prior season's actual points, adjusted by
+    // the player's recent-vs-season trend ratio as a situational-outlook
+    // proxy — capped at ±30% so a small recent sample can't swing the
+    // estimate wildly. Never fabricates a number when prior-season stats are
+    // also missing — returns null instead.
+    const priorPts = STATE.playerStats[pid];
+    if (priorPts === undefined || priorPts === null) return null; // never fabricate
+    // v4.5 fix: priorPts is a SEASON TOTAL (summed across all 18 weeks in the
+    // stats-fetch loop), but the primary branch above (`value = proj`) is a
+    // PER-WEEK figure. Multiplying priorPts directly by trendRatio and
+    // assigning it to the same `value` slot returned season-scale numbers
+    // (100-400+) mislabeled as per-week player_value — ~17x inflation,
+    // confirmed via 99 affected IDP free agents in the July 25 PLAYERZ BALL
+    // export (proj_current_week: 0, player_value up to 409). Divide by the
+    // player's actual games-played in STATE.statsSeason first — STATE.weeklyPts[pid]
+    // is already populated (one entry per played week) by this point in the
+    // fetch pipeline, so its key count is the precise gp for this exact point
+    // total, no reordering needed. Falls back to 17 (full season) only if no
+    // weekly entries exist at all, matching the same fallback used for the
+    // return-yardage per-week conversion above.
+    const gp = STATE.weeklyPts[pid] ? Object.keys(STATE.weeklyPts[pid]).length : 0;
+    const priorPtsPerWeek = priorPts / (gp || 17);
+    const trend = buildWeeklyTrend(pid);
+    let trendRatio = 1;
+    if (trend.recent_avg !== null && trend.season_avg !== null && trend.season_avg > 0) {
+      trendRatio = trend.recent_avg / trend.season_avg;
+      trendRatio = Math.max(0.7, Math.min(1.3, trendRatio)); // cap ±30%
+    }
+    value = priorPtsPerWeek * trendRatio;
+    basis = 'prior_season_trend_adjusted';
+    isEstimated = true;
+  }
+  const durability = buildDurabilityProfile(pid, p.position);
+  // Mild durability adjustment: penalize recent missed-time, never invent missing history
+  // v3.0 bug fix: buildDurabilityProfile() actually returns 'chronic' | 'injury_isolated' |
+  // 'watch' | 'stable' | 'insufficient_data' — the previous checks here ('injury_risk',
+  // 'limited_sample') never matched any real return value and were dead code. Corrected
+  // to use the real flag set.
+  if (durability?.durability_flag === 'chronic') value *= 0.88;
+  else if (durability?.durability_flag === 'watch') value *= 0.95;
+  else if (durability?.durability_flag === 'injury_isolated') value *= 0.97;
+  // Mild age/youth premium for keeper context only on skill positions with known age
+  if (p.age && ['RB', 'WR', 'TE', 'QB'].includes(p.position)) {
+    if (p.age <= 24) value *= 1.05;
+    else if (p.age >= 30) value *= 0.95;
+  }
+  return {
+    value: Math.round(value * 100) / 100,
+    is_estimated: isEstimated,
+    basis,
+  };
+}
+
+function getPlayerValue(pid) {
+  const detail = getPlayerValueDetail(pid);
+  return detail ? detail.value : null;
+}
+
+// v2.7: Keeper / draft-value calculator — compares a player's getPlayerValue()
+// against the estimated value of the draft pick cost to acquire/keep them.
+// Surfaces straightforward signal: KEEP (value > pick cost), EVEN, or
+// FORFEIT_VALUE (pick cost > player value) — no hidden scoring tiers.
+// v3.1: pick cost now scaled onto the player-value scale via scaledPickValue()
+// (was comparing raw 0-100 pick value directly against 150-300+ player value).
+// FAIR/KEEP threshold widened 5->15 to match the now player-scaled totals.
+function buildKeeperValueRow(pid, pickInfo, totalRosters, currentSeason) {
+  const playerValue = getPlayerValue(pid);
+  const pickValue = scaledPickValue({ ...pickInfo, totalRosters, currentSeason });
+  let verdict = '—';
+  if (playerValue !== null && pickValue !== null) {
+    const diff = playerValue - pickValue;
+    verdict = diff > 15 ? 'KEEP (value+)' : diff < -15 ? 'FORFEIT_VALUE' : 'EVEN';
+  }
+  return { player_id: pid, player_value: playerValue, pick_value: pickValue, verdict };
+}
+
+// v2.7: Rookie class data layer. Builds from STATE.playerDB (already fetched
+// via fetchPlayerDB) by filtering years_exp === 0. No separate prospect-grade
+// data source is wired in yet — that needs a confirmed source from Leo before
+// adding (Sleeper's player DB has no scouting grades). Flag this gap to user.
+function buildRookieClass() {
+  const rookies = {};
+  for (const [pid, p] of Object.entries(STATE.playerDB || {})) {
+    if (p && p.years_exp === 0 && p.position) {
+      rookies[pid] = {
+        player_id: pid,
+        name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+        position: p.position,
+        nfl_team: p.team || '—',
+        age: p.age || null,
+        proj: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+        draft_capital: STATE.draftedPicks[pid] || null, // NFL draft capital if pulled in, else null
+        player_value: getPlayerValue(pid),
+      };
+    }
+  }
+  STATE.rookieClass = rookies;
+  return rookies;
+}
+
+// ══════════════════════════════════════════════
+//  PRIOR SEASON DATA (previous_league_id chain)
+// ══════════════════════════════════════════════
+async function fetchPriorSeasonData(currentLeague) {
+  const prevId = currentLeague.previous_league_id;
+  if (!prevId || prevId === '0') return; // no prior season linked
+  try {
+    // Fetch prior league info, rosters, users, and matchups
+    const [prevRosters, prevUsers, prevLeague] = await Promise.all([
+      sleeperGet(`/league/${prevId}/rosters`),
+      sleeperGet(`/league/${prevId}/users`),
+      sleeperGet(`/league/${prevId}`),
+    ]);
+    const userMap = {};
+    (prevUsers || []).forEach(u => { userMap[u.user_id] = u; });
+    STATE.prevSeasonData.leagueId = prevId;
+    STATE.prevSeasonData.rosters = prevRosters || [];
+    STATE.prevSeasonData.users = userMap;
+
+    // Build standings from prior rosters
+    STATE.prevSeasonData.standings = (prevRosters || []).map(r => {
+      const u = userMap[r.owner_id];
+      return {
+        roster_id: r.roster_id,
+        teamName: u?.metadata?.team_name || u?.display_name || 'Team ' + r.roster_id,
+        owner: u?.display_name || '—',
+        wins: r.settings?.wins || 0,
+        losses: r.settings?.losses || 0,
+        ties: r.settings?.ties || 0,
+        fpts: r.settings?.fpts || 0,
+        fpts_decimal: r.settings?.fpts_decimal || 0,
+        fpts_against: r.settings?.fpts_against || 0,
+        fpts_against_decimal: r.settings?.fpts_against_decimal || 0,
+      };
+    }).sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return (b.fpts + b.fpts_decimal/100) - (a.fpts + a.fpts_decimal/100);
+    });
+
+    // Fetch prior season matchups (up to 18 weeks)
+    STATE.prevSeasonData.matchups = {};
+    const totalWeeks = prevLeague?.settings?.playoff_week_start || 15;
+    const wPromises = [];
+    for (let w = 1; w <= totalWeeks; w++) {
+      wPromises.push(
+        sleeperGet(`/league/${prevId}/matchups/${w}`)
+          .then(data => { if (data && data.length) STATE.prevSeasonData.matchups[w] = data; })
+          .catch(() => {})
+      );
+    }
+    await Promise.all(wPromises);
+  } catch(e) {
+    // Prior season fetch is best-effort — don't break load
+    console.warn('Prior season fetch failed:', e);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  PROGRESS
+// ══════════════════════════════════════════════
+function setProgress(pct, label) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+function showProgress(label) {
+  document.getElementById('progress-wrap').style.display = 'block';
+  setProgress(0, label);
+}
+function hideProgress() {
+  document.getElementById('progress-wrap').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════════════
+document.getElementById('btn-login').onclick = doLogin;
+document.getElementById('username-input').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+
+async function doLogin() {
+  const input = document.getElementById('username-input');
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+  const username = input.value.trim().toLowerCase();
+  if (!username) return;
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>Loading…';
+  try {
+    const user = await sleeperGet(`/user/${username}`);
+    if (!user || !user.user_id) throw new Error('User not found');
+    STATE.username = user.display_name || username;
+    STATE.userId = user.user_id;
+    const nflState = await sleeperGet('/state/nfl');
+    STATE.currentWeek = nflState.week || 1;
+    STATE.currentSeason = nflState.season || String(new Date().getFullYear());
+    STATE.statsSeason = String(parseInt(STATE.currentSeason) - 1); // e.g. "2025"
+    const leagues = await sleeperGet(`/user/${user.user_id}/leagues/nfl/${STATE.currentSeason}`);
+    STATE.leagues = leagues || [];
+    showLeagueScreen();
+  } catch(err) {
+    errEl.textContent = err.message || 'Login failed. Check your username.';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Load Leagues';
+}
+
+function showLeagueScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('league-screen').style.display = 'block';
+  document.getElementById('commissioner-badge').style.display = 'block';
+  document.getElementById('commissioner-badge').textContent = '👤 ' + STATE.username;
+  document.getElementById('btn-logout').style.display = 'block';
+  renderLeagueGrid();
+}
+
+function renderLeagueGrid() {
+  const grid = document.getElementById('league-grid');
+  document.getElementById('league-screen-title').textContent = `Your Leagues (${STATE.currentSeason})`;
+  grid.innerHTML = '';
+  if (!STATE.leagues.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="es-icon">🏈</div><div>No leagues found for this season.</div></div>';
+    return;
+  }
+  STATE.leagues.forEach(lg => {
+    const card = document.createElement('div');
+    card.className = 'league-card';
+    const avatar = lg.avatar ? `https://sleepercdn.com/avatars/thumbs/${lg.avatar}` : '';
+    card.innerHTML = `
+      ${avatar ? `<img class="league-icon" src="${avatar}" onerror="this.style.display='none'" />` : '<div class="league-icon"></div>'}
+      <div class="lc-info">
+        <div class="lc-name">${esc(lg.name)}</div>
+        <div class="lc-meta">${lg.total_rosters} teams · ${lg.settings?.type === 2 ? 'Dynasty' : lg.settings?.type === 1 ? 'Keeper' : 'Redraft'} · ${getScoringLabel(lg)}</div>
+      </div>`;
+    card.onclick = () => loadLeague(lg);
+    grid.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  LOAD LEAGUE
+// ══════════════════════════════════════════════
+async function loadLeague(lg) {
+  STATE.activeLeague = lg;
+  STATE.scoringMap = buildScoringMap(lg);
+  document.getElementById('league-screen').style.display = 'none';
+  showProgress('Loading league data…');
+
+  try {
+    setProgress(5, 'Fetching player database…');
+    STATE.playerDB = await fetchPlayerDB();
+
+    setProgress(20, 'Fetching rosters…');
+    STATE.rosters = await sleeperGet(`/league/${lg.league_id}/rosters`);
+
+    setProgress(30, 'Fetching users…');
+    const users = await sleeperGet(`/league/${lg.league_id}/users`);
+    STATE.leagueUsers = {};
+    (users || []).forEach(u => { STATE.leagueUsers[u.user_id] = u; });
+
+    setProgress(40, 'Fetching matchup history…');
+    const totalWeeks = lg.settings?.playoff_week_start || 15;
+    STATE.matchupsByWeek = {};
+    const weekPromises = [];
+    for (let w = 1; w < STATE.currentWeek && w <= totalWeeks; w++) {
+      weekPromises.push(
+        sleeperGet(`/league/${lg.league_id}/matchups/${w}`)
+          .then(data => { STATE.matchupsByWeek[w] = data || []; })
+          .catch(() => { STATE.matchupsByWeek[w] = []; })
+      );
+    }
+    await Promise.all(weekPromises);
+
+    setProgress(60, 'Fetching transactions (all weeks)…');
+    STATE.transactions = [];
+    STATE.auctionCosts = {};
+    try {
+      const txWeeks = Math.max(1, STATE.currentWeek);
+      const txPromises = [];
+      for (let w = 1; w <= txWeeks; w++) {
+        txPromises.push(
+          sleeperGet(`/league/${lg.league_id}/transactions/${w}`)
+            .then(data => { if (Array.isArray(data)) STATE.transactions.push(...data); })
+            .catch(() => {})
+        );
+      }
+      await Promise.all(txPromises);
+
+      // Fetch prev season startup auction costs from draft picks + transactions
+      const prevId = lg.previous_league_id;
+      if (prevId && prevId !== '0') {
+        try {
+          // Step 1: pull startup auction costs from prev season draft picks endpoint
+          const prevDrafts = await sleeperGet(`/league/${prevId}/drafts`);
+          if (Array.isArray(prevDrafts) && prevDrafts.length) {
+            for (const draft of prevDrafts) {
+              if (!draft.draft_id) continue;
+              const picks = await sleeperGet(`/draft/${draft.draft_id}/picks`);
+              if (!Array.isArray(picks)) continue;
+              picks.forEach(pick => {
+                const pid = pick.player_id ? String(pick.player_id) : null;
+                const cost = pick.metadata?.amount !== undefined ? Number(pick.metadata.amount) : null;
+                const rid = pick.roster_id || null;
+                // v4.2: Sleeper's pick.is_keeper is true/false/null — capture it so keeper leagues
+                // can distinguish "kept from last season" vs "freshly drafted/auctioned" per player.
+                const isKeeper = pick.is_keeper === true ? true : (pick.is_keeper === false ? false : null);
+                if (pid && cost !== null && !STATE.auctionCosts[pid]) {
+                  STATE.auctionCosts[pid] = { cost, roster_id: rid, is_keeper: isKeeper };
+                }
+                // v2.3: draft capital (round/pick_no/draft_slot) — prior season draft, walked back via previous_league_id
+                if (pid && pick.round !== undefined && pick.round !== null && !STATE.draftedPicks[pid]) {
+                  STATE.draftedPicks[pid] = {
+                    season: draft.season || null,
+                    round: pick.round,
+                    pick_no: pick.pick_no ?? null,
+                    draft_slot: pick.draft_slot ?? null,
+                    draft_type: draft.type || null, // v2.4: 'snake' | 'auction' | 'linear' — distinguishes vet-auction picks from real draft capital
+                  };
+                }
+              });
+            }
+          }
+          // Step 2: also scan prev season transactions for in-season auction adds
+          const prevLeagueInfo = await sleeperGet(`/league/${prevId}`);
+          const prevWeeks = prevLeagueInfo?.settings?.playoff_week_start || 18;
+          const prevTxPromises = [];
+          const prevTxs = [];
+          for (let w = 1; w <= prevWeeks; w++) {
+            prevTxPromises.push(
+              sleeperGet(`/league/${prevId}/transactions/${w}`)
+                .then(data => { if (Array.isArray(data)) prevTxs.push(...data); })
+                .catch(() => {})
+            );
+          }
+          await Promise.all(prevTxPromises);
+          prevTxs.forEach(tx => {
+            if (tx.settings?.waiver_bid !== undefined && tx.adds) {
+              for (const [pid, rid] of Object.entries(tx.adds)) {
+                // v4.2: FAAB/waiver adds are never keeper designations — explicit false, not null,
+                // so consumers can tell "confirmed not a keeper pick" from "unknown".
+                if (!STATE.auctionCosts[pid]) STATE.auctionCosts[pid] = { cost: tx.settings.waiver_bid, roster_id: rid, is_keeper: false };
+              }
+            }
+            if (tx.metadata?.nominated_by && tx.adds) {
+              for (const [pid, rid] of Object.entries(tx.adds)) {
+                const cost = tx.metadata?.amount !== undefined ? Number(tx.metadata.amount) : null;
+                if (cost !== null && !STATE.auctionCosts[pid]) STATE.auctionCosts[pid] = { cost, roster_id: rid, is_keeper: false };
+              }
+            }
+          });
+        } catch(e) { /* prev season auction fetch is best-effort */ }
+      }
+
+      // Extract auction costs from current season transactions
+      STATE.transactions.forEach(tx => {
+        if (tx.settings?.waiver_bid !== undefined && tx.adds) {
+          for (const [pid, rid] of Object.entries(tx.adds)) {
+            STATE.auctionCosts[pid] = { cost: tx.settings.waiver_bid, roster_id: rid, is_keeper: false };
+          }
+        }
+        if (tx.metadata?.nominated_by && tx.adds) {
+          for (const [pid, rid] of Object.entries(tx.adds)) {
+            const cost = tx.metadata?.amount !== undefined ? Number(tx.metadata.amount) : null;
+            if (cost !== null) STATE.auctionCosts[pid] = { cost, roster_id: rid, is_keeper: false };
+          }
+        }
+      });
+    } catch(e) { STATE.transactions = []; }
+
+    setProgress(70, 'Fetching draft picks…');
+    try {
+      const drafts = await sleeperGet(`/league/${lg.league_id}/drafts`);
+      STATE.draftInfo = drafts && drafts.length ? drafts[0] : null;
+      if (STATE.draftInfo) {
+        STATE.tradedPicks = await sleeperGet(`/league/${lg.league_id}/traded_picks`);
+
+        // Pull current season auction picks — this is where TECMO-style auction costs live
+        try {
+          const currentPicks = await sleeperGet(`/draft/${STATE.draftInfo.draft_id}/picks`);
+          if (Array.isArray(currentPicks)) {
+            currentPicks.forEach(pick => {
+              const pid = pick.player_id ? String(pick.player_id) : null;
+              // Auction cost lives in metadata.amount
+              const cost = pick.metadata?.amount !== undefined ? Number(pick.metadata.amount) : null;
+              const rid = pick.roster_id || null;
+              // v4.2: this year's is_keeper flag — the actual signal for "which players were
+              // designated as keepers in THIS offseason's draft/auction," not just cost history.
+              const isKeeper = pick.is_keeper === true ? true : (pick.is_keeper === false ? false : null);
+              if (pid && cost !== null) {
+                // Current season picks override prev season — always write
+                STATE.auctionCosts[pid] = { cost, roster_id: rid, is_keeper: isKeeper };
+              }
+              // v2.3: draft capital — current season picks always override prior season
+              if (pid && pick.round !== undefined && pick.round !== null) {
+                STATE.draftedPicks[pid] = {
+                  season: lg.season || STATE.currentSeason || null,
+                  round: pick.round,
+                  pick_no: pick.pick_no ?? null,
+                  draft_slot: pick.draft_slot ?? null,
+                  draft_type: STATE.draftInfo?.type || null, // v2.4
+                };
+              }
+            });
+          }
+        } catch(e) { /* current season draft picks fetch best-effort */ }
+      }
+    } catch(e) { STATE.tradedPicks = []; }
+
+    setProgress(82, `Fetching prior season stats (${STATE.statsSeason})…`);
+    // Fetch all 18 weeks of prior season stats and accumulate per player
+    STATE.playerStats = {};
+    STATE.playerStatSplits = {};
+    STATE.weeklyPts = {}; // v2.8: pid -> { week: pts }, retained for trend tracking
+    const SPLIT_KEYS = ['rush_att','rush_yd','rec_tgt','rec','rec_yd','snap_cnt','pass_att','pass_cmp','pass_yd','pass_td','pass_int','idp_tkl_solo','idp_tkl_ast','idp_tkl_loss','idp_sack','idp_int','idp_ff','idp_pass_def','idp_qb_hit','idp_fum_rec','kr_yd','pr_yd'];
+    const statsWeekPromises = [];
+    for (let w = 1; w <= 18; w++) {
+      statsWeekPromises.push(
+        fetchStats(STATE.statsSeason, w)
+          .then(weekData => {
+            for (const [pid, statsObj] of Object.entries(weekData)) {
+              const pts = scoreStats(statsObj, STATE.scoringMap);
+              if (pts > 0) {
+                STATE.playerStats[pid] = (STATE.playerStats[pid] || 0) + pts;
+              }
+              // v2.8: retain per-week pts (only for weeks the player actually played,
+              // using the same 'gp' signal preferred elsewhere over key-presence)
+              // v3.7: key-presence fallback restricted to positions we track stats for (see
+              // isTrackedStatPosition) — untracked positions (OL/FB/LS/etc.) require explicit gp.
+              // v4.0 fix: same corroborating-production requirement as the season-history loop
+              // (see detailed comment there) — Sleeper's gp flag alone isn't a reliable signal
+              // for players who missed the week/season on IR.
+              const posForGP = STATE.playerDB?.[pid]?.position;
+              const posKeyForGP = posForGP === 'DE' || posForGP === 'DT' ? 'DL' : posForGP === 'CB' ? 'DB' : posForGP;
+              const trackedKeysForGP = POS_STAT_KEYS[posKeyForGP] || SPLIT_KEYS;
+              const hasStatProduction = trackedKeysForGP.some(k => Number(statsObj[k]) > 0);
+              // v4.3: DEF carve-out — see detailed comment in the season-history loop above.
+              const didPlay = posKeyForGP === 'DEF'
+                ? (statsObj.gp !== undefined ? statsObj.gp > 0 : true)
+                : statsObj.gp !== undefined
+                  ? (statsObj.gp > 0 && hasStatProduction)
+                  : (isTrackedStatPosition(posForGP) && hasStatProduction);
+              if (didPlay) {
+                if (!STATE.weeklyPts[pid]) STATE.weeklyPts[pid] = {};
+                STATE.weeklyPts[pid][w] = pts;
+              }
+              // Accumulate raw splits regardless of scored pts (IDP may score via keys not in pts)
+              for (const key of SPLIT_KEYS) {
+                if (statsObj[key]) {
+                  if (!STATE.playerStatSplits[pid]) STATE.playerStatSplits[pid] = {};
+                  STATE.playerStatSplits[pid][key] = (STATE.playerStatSplits[pid][key] || 0) + statsObj[key];
+                }
+              }
+            }
+          })
+          .catch(() => {})
+      );
+    }
+    await Promise.all(statsWeekPromises);
+    // Round accumulated totals
+    for (const pid of Object.keys(STATE.playerStats)) {
+      STATE.playerStats[pid] = Math.round(STATE.playerStats[pid] * 100) / 100;
+    }
+    // Round weekly pts (v2.8)
+    for (const pid of Object.keys(STATE.weeklyPts)) {
+      for (const w of Object.keys(STATE.weeklyPts[pid])) {
+        STATE.weeklyPts[pid][w] = Math.round(STATE.weeklyPts[pid][w] * 100) / 100;
+      }
+    }
+    // Round splits
+    for (const pid of Object.keys(STATE.playerStatSplits)) {
+      for (const key of Object.keys(STATE.playerStatSplits[pid])) {
+        STATE.playerStatSplits[pid][key] = Math.round(STATE.playerStatSplits[pid][key] * 10) / 10;
+      }
+    }
+
+    // v2.1: Fetch 3-season games-played + pts history (current statsSeason + 2 prior) for durability tracking
+    setProgress(88, 'Fetching multi-season history (durability)…');
+    STATE.statsHistory = {};
+    const histSeasons = [
+      parseInt(STATE.statsSeason),
+      parseInt(STATE.statsSeason) - 1,
+      parseInt(STATE.statsSeason) - 2,
+    ];
+    // v2.2: stat keys to accumulate per player per season (union of all positions; buildDurabilityProfile filters by pos)
+    // v4.4: added DEF fields (sack/int/fum_rec/ff/safe/blk_kick/def_td) — the v4.3 patch added these to
+    // POS_STAT_KEYS (which selects which keys get output) but missed adding them here too, so nothing
+    // was ever being summed into them; season_stat_history.stats for DEF was showing all zeros as a result.
+    const ACCUM_STAT_KEYS = ['pass_yd','pass_td','pass_int','rush_att','rush_yd','rush_td','rec','rec_yd','rec_td',
+      'idp_tkl_solo','idp_tkl_ast','idp_sack','idp_int','idp_ff','fgm','fga','xpm','kr_yd','pr_yd',
+      'sack','int','fum_rec','ff','safe','blk_kick','def_td']; // v3.5: added kr_yd/pr_yd
+    for (const seasonYear of histSeasons) {
+      const seasonStr = String(seasonYear);
+      const seasonGP = {};   // pid -> games played count for this season
+      const seasonPts = {};  // pid -> accumulated pts for this season
+      const seasonStatAcc = {}; // v2.2: pid -> accumulated stat fields
+      const weekPromises = [];
+      for (let w = 1; w <= 18; w++) {
+        weekPromises.push(
+          fetchStats(seasonStr, w)
+            .then(weekData => {
+              for (const [pid, statsObj] of Object.entries(weekData)) {
+                if (!statsObj) continue;
+                // v2.1 fix: Sleeper's stats payload includes a real 'gp' field (games played).
+                // Prefer that over inferring "played" from key presence, which can be tripped
+                // by stray/garbage entries (e.g. special-teams-only snaps) for games a player
+                // didn't actually suit up for. Fall back to key-presence only if 'gp' is absent.
+                // v3.7: that key-presence fallback is now restricted to positions we track stats
+                // for (isTrackedStatPosition). Untracked positions (OL/FB/LS/G/T/C/NT/P) lack a
+                // 'gp' field entirely in Sleeper's payload, and a non-empty stats object for them
+                // does not reliably mean the player suited up — so no 'gp' now means no count,
+                // and games_played_history correctly falls through to null (see buildDurabilityProfile).
+                // v4.0 fix: Sleeper's 'gp' flag was found to be unreliable for players who missed
+                // most/all of a season on IR — it can read gp=1 for a given week even though the
+                // player recorded zero on-field production, apparently reflecting that the player's
+                // TEAM had a game that week rather than that the player himself took the field.
+                // Confirmed case: a player who suffered a Week 1 season-ending injury and played in
+                // exactly 1 game still had every one of the season's 17 weeks counted as "played,"
+                // massively overstating durability and games_played_history for that season.
+                // Fix: gp>0 alone is no longer sufficient. For tracked positions, also require at
+                // least one nonzero tracked stat that week as corroborating evidence of actual
+                // participation. This only affects games with zero recorded production; a real
+                // shutout game with genuine snaps almost always still produces at least one tracked
+                // stat (a tackle, a target, a snap-adjacent stat), so false negatives are rare, while
+                // this closes off the systematic false-positive for injured/inactive players.
+                const posForGP = STATE.playerDB?.[pid]?.position;
+                const posKeyForGP = posForGP === 'DE' || posForGP === 'DT' ? 'DL' : posForGP === 'CB' ? 'DB' : posForGP;
+                const trackedKeysForGP = POS_STAT_KEYS[posKeyForGP] || SPLIT_KEYS;
+                const hasStatProduction = trackedKeysForGP.some(k => Number(statsObj[k]) > 0);
+                // v4.3: team defenses (DEF) can legitimately record zero of the tracked
+                // box-score events (sack/int/fum_rec/ff/safe/blk_kick/def_td) in a real,
+                // fully-played game. Unlike an individual player, a unit can't be
+                // "inactive," so gp alone is a reliable played signal for this position —
+                // requiring production corroboration here was silently zeroing out every
+                // DEF's games_played_history/pts_history/season_stat_history.
+                const didPlay = posKeyForGP === 'DEF'
+                  ? (statsObj.gp !== undefined ? statsObj.gp > 0 : true)
+                  : statsObj.gp !== undefined
+                    ? (statsObj.gp > 0 && hasStatProduction)
+                    : (isTrackedStatPosition(posForGP) && hasStatProduction);
+                if (didPlay) {
+                  seasonGP[pid] = (seasonGP[pid] || 0) + 1;
+                  const pts = scoreStats(statsObj, STATE.scoringMap);
+                  seasonPts[pid] = (seasonPts[pid] || 0) + pts;
+                  // v2.2: accumulate position-relevant stat fields
+                  if (!seasonStatAcc[pid]) seasonStatAcc[pid] = {};
+                  for (const k of ACCUM_STAT_KEYS) {
+                    if (statsObj[k]) seasonStatAcc[pid][k] = (seasonStatAcc[pid][k] || 0) + statsObj[k];
+                  }
+                }
+              }
+            })
+            .catch(() => {})
+        );
+      }
+      await Promise.all(weekPromises);
+      for (const pid of new Set([...Object.keys(seasonGP), ...Object.keys(seasonPts)])) {
+        if (!STATE.statsHistory[pid]) STATE.statsHistory[pid] = {};
+        STATE.statsHistory[pid][seasonStr] = {
+          gp: seasonGP[pid] || 0,
+          pts: Math.round((seasonPts[pid] || 0) * 100) / 100,
+          acc: seasonStatAcc[pid] || {}, // v2.2: accumulated stats (filtered by pos in buildDurabilityProfile)
+        };
+      }
+    }
+
+    setProgress(93, 'Fetching projections…');
+    const projWeek = Math.max(1, Math.min(STATE.currentWeek, 18));
+    const rawProj = await fetchProjections(STATE.currentSeason, projWeek);
+    STATE.projections = {};
+    for (const [pid, stats] of Object.entries(rawProj)) {
+      STATE.projections[pid] = scoreStats(stats, STATE.scoringMap);
+    }
+
+    setProgress(97, 'Fetching prior season data…');
+    STATE.prevSeasonData = { standings: [], matchups: {}, leagueId: null, rosters: [], users: {} };
+    await fetchPriorSeasonData(lg);
+
+    setProgress(100, 'Done!');
+    setTimeout(() => {
+      hideProgress();
+      renderDashboard();
+    }, 300);
+  } catch(err) {
+    hideProgress();
+    alert('Error loading league: ' + (err.message || err));
+  }
+}
+
+// ══════════════════════════════════════════════
+//  RENDER DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard() {
+  const lg = STATE.activeLeague;
+
+  // Toolbar
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('toolbar-league-name').textContent = lg.name;
+
+  // Show Draft JSON button only when a draft is actively in progress
+  const draftBtn = document.getElementById('btn-draft-json');
+  const draftStatus = STATE.draftInfo?.status;
+  draftBtn.style.display = (draftStatus === 'drafting' || draftStatus === 'paused') ? 'inline-block' : 'none';
+
+  // Stats strip
+  const strip = document.getElementById('stats-strip');
+  strip.style.display = 'grid';
+  document.getElementById('ss-teams').textContent = lg.total_rosters;
+  document.getElementById('ss-season').textContent = STATE.currentSeason;
+  document.getElementById('ss-week').textContent = 'Wk ' + STATE.currentWeek;
+  const sc = lg.scoring_settings;
+  document.getElementById('ss-scoring').textContent = getScoringLabel(lg);
+  document.getElementById('ss-type').textContent = lg.settings?.type === 2 ? 'Dynasty' : lg.settings?.type === 1 ? 'Keeper' : 'Redraft';
+
+  // Global packets
+  document.getElementById('global-packets').style.display = 'block';
+
+  // Teams table
+  document.getElementById('teams-section').style.display = 'block';
+  renderTeamsTable();
+}
+
+function isOrphan(roster) {
+  return !roster.owner_id || !STATE.leagueUsers[roster.owner_id];
+}
+
+function getRosterOwner(roster) {
+  const u = STATE.leagueUsers[roster.owner_id];
+  const orphan = isOrphan(roster);
+  return {
+    teamName: (orphan ? '⚠️ ' : '') + (u?.metadata?.team_name || u?.display_name || 'Orphan Roster ' + roster.roster_id),
+    owner: u?.display_name || '—',
+    avatar: u?.avatar || '',
+    orphan,
+  };
+}
+
+// v2.3: derive a human-readable trade log from raw transactions (type === 'trade').
+// Raw transactions only carry roster_ids/player_ids — this resolves team names and player names
+// and groups players/picks sent vs. received per team for each trade.
+// v3.0: Trade analyzer upgrade. Each completed trade is now scored using the
+// same getPlayerValue()/pickEstimatedValue() math used everywhere else in the
+// tool (no separate/duplicate valuation logic). A side's value is null (not 0)
+// if ANY asset on that side lacks data, so we never silently understate a side.
+function scoreTradeSide(received, totalRosters, currentSeason) {
+  let total = 0;
+  let hasUnknown = false;
+  const lines = received.map(item => {
+    if (item.kind === 'player') {
+      const v = getPlayerValue(item.pid);
+      if (v === null) hasUnknown = true; else total += v;
+      return { ...item, value: v };
+    } else {
+      // v3.1: use scaledPickValue() (pick value scaled onto player-value scale)
+      // instead of raw pickEstimatedValue(), to fix the scale mismatch where
+      // pick values (0-100) were combined with player values (150-300+)
+      // without normalization.
+      const v = scaledPickValue({ ...item.pickInfo, totalRosters, currentSeason });
+      if (v === null) hasUnknown = true; else total += v;
+      return { ...item, value: v };
+    }
+  });
+  return { lines, total: Math.round(total * 100) / 100, hasUnknown };
+}
+
+function buildTradeLog() {
+  const teamName = rid => {
+    const r = STATE.rosters.find(rr => rr.roster_id === rid);
+    return r ? getRosterOwner(r).teamName : 'Roster ' + rid;
+  };
+  const playerName = pid => {
+    const p = STATE.playerDB[pid];
+    return p ? (p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid)) : pid;
+  };
+  const totalRosters = STATE.activeLeague?.total_rosters || STATE.rosters.length;
+  const currentSeason = STATE.currentSeason;
+  return (STATE.transactions || [])
+    .filter(tx => tx.type === 'trade' && tx.status === 'complete')
+    .sort((a, b) => (b.created || 0) - (a.created || 0))
+    .map(tx => {
+      const rosterIds = tx.roster_ids || [];
+      const teams = rosterIds.map(rid => {
+        const playersIn = tx.adds ? Object.entries(tx.adds).filter(([, r]) => r === rid).map(([pid]) => ({ kind: 'player', pid, label: playerName(pid) })) : [];
+        const playersOut = tx.drops ? Object.entries(tx.drops).filter(([, r]) => r === rid).map(([pid]) => ({ kind: 'player', pid, label: playerName(pid) })) : [];
+        const picksIn = (tx.draft_picks || []).filter(pk => pk.owner_id === rid).map(pk => ({ kind: 'pick', pickInfo: { season: pk.season, round: pk.round }, label: `${pk.season} Rd${pk.round}` }));
+        const picksOut = (tx.draft_picks || []).filter(pk => pk.previous_owner_id === rid).map(pk => ({ kind: 'pick', pickInfo: { season: pk.season, round: pk.round }, label: `${pk.season} Rd${pk.round}` }));
+        const received = [...playersIn, ...picksIn];
+        const sent = [...playersOut, ...picksOut];
+        const scoredReceived = scoreTradeSide(received, totalRosters, currentSeason);
+        return {
+          roster_id: rid,
+          team_name: teamName(rid),
+          received: received.map(r => r.label),
+          sent: sent.map(s => s.label),
+          value_received: scoredReceived.total,
+          value_received_has_unknown: scoredReceived.hasUnknown,
+        };
+      });
+      // Winner = highest value_received minus what they sent away (net gain), only
+      // when no side has unknown/missing valuation data — never guess a winner
+      // off incomplete inputs.
+      let winner = null;
+      let verdict = 'INSUFFICIENT_DATA';
+      const anyUnknown = teams.some(t => t.value_received_has_unknown);
+      if (!anyUnknown && teams.length === 2) {
+        const diff = teams[0].value_received - teams[1].value_received;
+        if (Math.abs(diff) <= 15) {
+          verdict = 'FAIR';
+        } else {
+          winner = diff > 0 ? teams[0].team_name : teams[1].team_name;
+          verdict = `${winner} +${Math.abs(Math.round(diff * 100) / 100)} value`;
+        }
+      }
+      return {
+        date: tx.created ? new Date(tx.created).toISOString() : null,
+        week: tx.leg ?? null,
+        teams,
+        verdict,
+      };
+    });
+}
+
+// v3.0: Standalone hypothetical-trade analyzer. Evaluates a proposed trade not
+// yet executed — sideA/sideB are arrays of { kind: 'player', pid } or
+// { kind: 'pick', pickInfo: { season, round, slot } }. Returns scored sides and
+// a verdict using the same math as buildTradeLog(), so live/hypothetical and
+// historical trades are always judged on the same scale.
+function evaluateTrade(sideA, sideB, labelA = 'Side A', labelB = 'Side B') {
+  const totalRosters = STATE.activeLeague?.total_rosters || STATE.rosters.length;
+  const currentSeason = STATE.currentSeason;
+  const scoredA = scoreTradeSide(sideA || [], totalRosters, currentSeason);
+  const scoredB = scoreTradeSide(sideB || [], totalRosters, currentSeason);
+  let verdict = 'INSUFFICIENT_DATA';
+  if (!scoredA.hasUnknown && !scoredB.hasUnknown) {
+    const diff = scoredA.total - scoredB.total;
+    if (Math.abs(diff) <= 15) verdict = 'FAIR';
+    else verdict = diff > 0 ? `${labelA} wins by ${Math.round(diff * 100) / 100}` : `${labelB} wins by ${Math.abs(Math.round(diff * 100) / 100)}`;
+  }
+  return {
+    side_a: { label: labelA, lines: scoredA.lines, total: scoredA.total, has_unknown: scoredA.hasUnknown },
+    side_b: { label: labelB, lines: scoredB.lines, total: scoredB.total, has_unknown: scoredB.hasUnknown },
+    verdict,
+  };
+}
+
+function renderTeamsTable() {
+  const sorted = [...STATE.rosters].sort((a, b) => {
+    const ar = a.settings || {}, br = b.settings || {};
+    if ((br.wins || 0) !== (ar.wins || 0)) return (br.wins || 0) - (ar.wins || 0);
+    return (br.fpts || 0) - (ar.fpts || 0);
+  });
+  const tbody = document.getElementById('teams-tbody');
+  tbody.innerHTML = '';
+  sorted.forEach((r, i) => {
+    const { teamName, owner } = getRosterOwner(r);
+    const s = r.settings || {};
+    const rank = i + 1;
+    const badgeClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+    const pf = fmtPts(s.fpts, s.fpts_decimal);
+    const pa = fmtPts(s.fpts_against, s.fpts_against_decimal);
+    const streak = (!s.wins && !s.losses && !s.ties) ? '—' : s.streak_type === 'W' ? `<span style="color:var(--success)">W${s.streak_count||1}</span>` : `<span style="color:var(--danger)">L${s.streak_count||1}</span>`;
+    const rosterPositions = STATE.activeLeague.roster_positions || [];
+    const expectedSize = rosterPositions.length;
+    const actualSize = (r.players || []).length;
+    const sizeFlag = expectedSize > 0 && actualSize !== expectedSize ? ` <span style="color:var(--warn);font-size:11px;" title="Roster size: ${actualSize}/${expectedSize}">⚠️${actualSize}</span>` : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
+      <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(teamName)}${sizeFlag}</td>
+      <td style="color:var(--text2);">${esc(owner)}</td>
+      <td class="record">${s.wins||0}-${s.losses||0}${s.ties ? '-'+s.ties : ''}</td>
+      <td class="pts">${pf}</td>
+      <td class="pts">${pa}</td>
+      <td>${streak}</td>
+      <td>
+        <div class="team-btns">
+          <button onclick="openTeamPacket(${r.roster_id})">📋 Packet</button>
+          <button onclick="openTeamPacketLean(${r.roster_id})" style="font-size:11px;">📄 Lean</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function fmtPts(whole, dec) {
+  if (whole === undefined || whole === null) return '—';
+  const d = dec !== undefined && dec !== null ? dec : 0;
+  return (whole + d / 100).toFixed(2);
+}
+
+// ══════════════════════════════════════════════
+//  TEAM PACKETS
+// ══════════════════════════════════════════════
+function openTeamPacket(rosterId) {
+  const roster = STATE.rosters.find(r => r.roster_id === rosterId);
+  if (!roster) return;
+  const { teamName, owner } = getRosterOwner(roster);
+  const players = roster.players || [];
+  const starters = new Set(roster.starters || []);
+  const taxi = new Set(roster.taxi || []);
+  const ir = new Set(roster.reserve || []);
+
+  const groups = { STARTER: [], BENCH: [], TAXI: [], IR: [] };
+  players.forEach(pid => {
+    if (ir.has(pid)) groups.IR.push(pid);
+    else if (taxi.has(pid)) groups.TAXI.push(pid);
+    else if (starters.has(pid)) groups.STARTER.push(pid);
+    else groups.BENCH.push(pid);
+  });
+
+  const s = roster.settings || {};
+  const rosterPositions = STATE.activeLeague.roster_positions || [];
+  const expectedSize = rosterPositions.length;
+  const actualSize = players.length;
+  const sizeViolation = expectedSize > 0 && actualSize !== expectedSize;
+
+  let text = `=== ${teamName} | Owner: ${owner} ===\n`;
+  text += `League: ${STATE.activeLeague.name} | Season: ${STATE.currentSeason}\n`;
+  text += `Record: ${s.wins||0}-${s.losses||0} | PF: ${fmtPts(s.fpts, s.fpts_decimal)}\n`;
+  if (sizeViolation) {
+    text += `⚠️ ROSTER SIZE VIOLATION: ${actualSize} players (expected ${expectedSize})\n`;
+  }
+  text += '\n';
+
+  const CONDENSED_KEYS = { QB:['pts','proj'], RB:['pts','proj','age'], WR:['pts','proj','age'], TE:['pts','proj','age'], DL:['pts','proj'], LB:['pts','proj'], DB:['pts','proj'] };
+
+  const renderGroup = (label, pids) => {
+    if (!pids.length) return '';
+    let out = `--- ${label} ---\n`;
+    const ptsHdr = `Pts(${STATE.statsSeason})`;
+    const projHdr = `Proj(Wk${STATE.currentWeek})`;
+    if (STATE.condensedStats) {
+      out += `${'Player'.padEnd(26)} ${'Pos'.padEnd(5)} ${'NFL'.padEnd(6)} ${ptsHdr.padEnd(10)} ${projHdr}\n`;
+    } else {
+      out += `${'Player'.padEnd(26)} ${'Pos'.padEnd(5)} ${'NFL'.padEnd(6)} ${ptsHdr.padEnd(12)} ${projHdr.padEnd(10)} ${'Age'.padEnd(4)} Exp\n`;
+    }
+    out += '-'.repeat(STATE.condensedStats ? 58 : 72) + '\n';
+    pids.forEach(pid => {
+      const p = STATE.playerDB[pid] || {};
+      const name = (p.full_name || (p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : pid)).slice(0, 25);
+      const pos = (p.position || '?').slice(0, 4);
+      const nfl = p.team ? p.team.slice(0, 4) : '[FA]';
+      const pts = STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid].toFixed(1) : '—';
+      const proj = STATE.projections[pid] !== undefined ? STATE.projections[pid].toFixed(1) : '—';
+      if (STATE.condensedStats) {
+        out += `${name.padEnd(26)} ${pos.padEnd(5)} ${nfl.padEnd(6)} ${pts.padEnd(10)} ${proj}\n`;
+      } else {
+        const age = p.age ? String(p.age) : '—';
+        const exp = p.years_exp !== undefined ? String(p.years_exp) : '—';
+        out += `${name.padEnd(26)} ${pos.padEnd(5)} ${nfl.padEnd(6)} ${pts.padEnd(12)} ${proj.padEnd(10)} ${age.padEnd(4)} ${exp}\n`;
+      }
+    });
+    return out + '\n';
+  };
+
+  text += renderGroup('STARTERS', groups.STARTER);
+  text += renderGroup('BENCH', groups.BENCH);
+  if (groups.TAXI.length) text += renderGroup('TAXI', groups.TAXI);
+  if (groups.IR.length) text += renderGroup('IR / RESERVE', groups.IR);
+
+  openModal(`${teamName} — Full Packet`, text);
+}
+
+// ══════════════════════════════════════════════
+//  GLOBAL PACKETS
+// ══════════════════════════════════════════════
+function openGlobalPacket(type) {
+  switch(type) {
+    case 'info':      openModal('League Info', buildPacketInfo()); break;
+    case 'standings': openModal('Standings', buildPacketStandings()); break;
+    case 'matchups':  openModal('Matchup History', buildPacketMatchups()); break;
+    case 'fa':        openModal('Free Agents', buildPacketFA()); break;
+    case 'transactions': openModal('Transactions', buildPacketTransactions()); break;
+    case 'draft':     openModal('Draft Picks', buildPacketDraftPicks()); break;
+    case 'power':     openModal('Power Rankings', buildPacketPower()); break;
+    case 'prevseason': openModal('Prior Season', buildPacketPrevSeason()); break;
+    case 'ageprofile': openModal('Age / Experience Profile', buildPacketAgeProfile()); break;
+  }
+}
+
+function openRostersMenu() {
+  const parts = getRostersPartCount();
+  if (parts <= 1) {
+    openModal('All Rosters', buildPacketRosters(0));
+    return;
+  }
+  const labels = ['A','B','C','D','E'];
+  // Build a small chooser text and open first part, with note about parts
+  const partLabel = (i) => `Rosters ${labels[i] || (i+1)} (Teams ${i*10+1}–${Math.min((i+1)*10, STATE.rosters.length)})`;
+  // Open part chooser via modal with part buttons
+  const chooser = Array.from({length: parts}, (_,i) =>
+    `[Part ${labels[i] || i+1}] ${partLabel(i)}`
+  ).join('\n');
+  // Open first part immediately, show hint
+  openModal(partLabel(0) + ' — use buttons below for other parts', buildPacketRosters(0));
+  // Inject part-switcher buttons into modal header area
+  setTimeout(() => {
+    const existing = document.getElementById('roster-part-btns');
+    if (existing) existing.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'roster-part-btns';
+    wrap.style.cssText = 'display:flex;gap:6px;padding:8px 20px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap;';
+    for (let i = 0; i < parts; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-sm';
+      btn.textContent = `Part ${labels[i] || i+1} (${i*10+1}–${Math.min((i+1)*10, STATE.rosters.length)})`;
+      btn.onclick = () => {
+        document.getElementById('modal-textarea').value = buildPacketRosters(i);
+        document.getElementById('modal-title').textContent = partLabel(i);
+      };
+      wrap.appendChild(btn);
+    }
+    document.getElementById('modal-body').prepend(wrap);
+  }, 0);
+}
+
+function buildPacketInfo() {
+  const lg = STATE.activeLeague;
+  const s = lg.settings || {};
+  const sc = lg.scoring_settings || {};
+  let t = `=== LEAGUE INFO ===\n`;
+  t += `Name: ${lg.name}\n`;
+  t += `Season: ${STATE.currentSeason} | Current Week: ${STATE.currentWeek}\n`;
+  t += `Teams: ${lg.total_rosters} | Format: ${s.type === 2 ? 'Dynasty' : s.type === 1 ? 'Keeper' : 'Redraft'}\n`;
+  t += `Scoring: ${getScoringLabel(lg)}\n`;
+  t += `Roster Positions: ${(lg.roster_positions || []).join(', ')}\n`;
+  t += `Playoff Teams: ${s.playoff_teams || '—'} | Playoff Start Week: ${s.playoff_week_start || '—'}\n`;
+  t += `Waiver Type: ${s.waiver_type === 0 ? 'Rolling' : s.waiver_type === 2 ? 'FAAB' : 'Standard'}\n`;
+  if (s.waiver_type === 2) t += `FAAB: $${s.waiver_budget || 100}\n`;
+  t += `Max Keepers: ${s.max_keepers !== undefined ? s.max_keepers : '—'}\n`;
+
+  // Divisions
+  if (s.divisions && s.divisions > 1) {
+    t += `\n--- DIVISIONS (${s.divisions}) ---\n`;
+    STATE.rosters.forEach(r => {
+      const { teamName } = getRosterOwner(r);
+      const div = r.settings?.division !== undefined ? `Division ${r.settings.division}` : '—';
+      t += `  ${teamName.padEnd(26)} ${div}\n`;
+    });
+  }
+
+  // Scoring settings grouped by category
+  const SCORING_CATS = {
+    'Passing': ['pass_yd','pass_td','pass_int','pass_2pt','pass_sack','pass_cmp','pass_inc','bonus_pass_yd_300','bonus_pass_yd_400'],
+    'Rushing': ['rush_yd','rush_td','rush_2pt','rush_att','bonus_rush_yd_100','bonus_rush_yd_200'],
+    'Receiving': ['rec','rec_yd','rec_td','rec_2pt','rec_tgt','bonus_rec_yd_100','bonus_rec_yd_200','bonus_rec_te'],
+    'Misc Offense': ['fum_lost','fum_rec_td','st_td','st_ff','st_fum_rec','pr_td','kr_td'],
+    'Kicking': ['fgm','fgm_0_19','fgm_20_29','fgm_30_39','fgm_40_49','fgm_50p','fgmiss','xpm','xpmiss'],
+    'IDP Defense': ['idp_solo','idp_asst','idp_sack','idp_int','idp_fum_rec','idp_pd','idp_td','idp_safe','idp_blk_kick','idp_ff'],
+  };
+  const used = new Set();
+  t += `\n--- SCORING SETTINGS ---\n`;
+  for (const [cat, keys] of Object.entries(SCORING_CATS)) {
+    const matches = keys.filter(k => sc[k] !== undefined && sc[k] !== 0);
+    if (!matches.length) continue;
+    t += `  [${cat}]\n`;
+    matches.forEach(k => { t += `    ${k}: ${sc[k]}\n`; used.add(k); });
+  }
+  // Catch-all for any remaining keys not in categories
+  const remaining = Object.entries(sc).filter(([k,v]) => v !== 0 && !used.has(k));
+  if (remaining.length) {
+    t += `  [Other]\n`;
+    remaining.forEach(([k,v]) => { t += `    ${k}: ${v}\n`; });
+  }
+  return t;
+}
+
+function buildPacketStandings() {
+  const lg = STATE.activeLeague;
+  const s = lg.settings || {};
+  const hasDivisions = s.divisions && s.divisions > 1;
+
+  const sorted = [...STATE.rosters].sort((a, b) => {
+    const aw = a.settings?.wins || 0, bw = b.settings?.wins || 0;
+    if (bw !== aw) return bw - aw;
+    return (b.settings?.fpts || 0) - (a.settings?.fpts || 0);
+  });
+
+  let t = `=== STANDINGS — ${STATE.activeLeague.name} (${STATE.currentSeason}) ===\n\n`;
+
+  const renderRows = (rosters, offset) => {
+    let out = `${'#'.padEnd(3)} ${'Team'.padEnd(24)} ${'Owner'.padEnd(18)} ${'W-L-T'.padEnd(8)} ${'PF'.padEnd(9)} ${'PA'.padEnd(9)} Streak\n`;
+    out += '-'.repeat(80) + '\n';
+    rosters.forEach((r, i) => {
+      const { teamName, owner } = getRosterOwner(r);
+      const rs = r.settings || {};
+      const rec = `${rs.wins||0}-${rs.losses||0}${rs.ties?'-'+rs.ties:''}`;
+      const pf = fmtPts(rs.fpts, rs.fpts_decimal);
+      const pa = fmtPts(rs.fpts_against, rs.fpts_against_decimal);
+      const str = (!rs.wins && !rs.losses && !rs.ties) ? '—' : (rs.streak_type || 'W') + (rs.streak_count || 1);
+      out += `${String(offset + i + 1).padEnd(3)} ${teamName.slice(0,23).padEnd(24)} ${owner.slice(0,17).padEnd(18)} ${rec.padEnd(8)} ${pf.padEnd(9)} ${pa.padEnd(9)} ${str}\n`;
+    });
+    return out;
+  };
+
+  if (hasDivisions) {
+    // Group by division number
+    const divMap = {};
+    sorted.forEach(r => {
+      const div = r.settings?.division !== undefined ? r.settings.division : 0;
+      if (!divMap[div]) divMap[div] = [];
+      divMap[div].push(r);
+    });
+    // Sort within each division by wins then PF (already sorted globally, filter maintains order)
+    const divNums = Object.keys(divMap).map(Number).sort((a,b) => a-b);
+    let globalRank = 0;
+    for (const div of divNums) {
+      const divRosters = divMap[div].sort((a,b) => {
+        const aw = a.settings?.wins||0, bw = b.settings?.wins||0;
+        if (bw !== aw) return bw - aw;
+        return (b.settings?.fpts||0) - (a.settings?.fpts||0);
+      });
+      t += `--- DIVISION ${div} ---\n`;
+      t += renderRows(divRosters, 0);
+      globalRank += divRosters.length;
+      t += '\n';
+    }
+    t += `--- OVERALL ---\n`;
+    t += renderRows(sorted, 0);
+  } else {
+    t += renderRows(sorted, 0);
+  }
+  return t;
+}
+
+function buildPacketMatchups() {
+  let t = `=== MATCHUP HISTORY — ${STATE.activeLeague.name} ===\n`;
+  const weeks = Object.keys(STATE.matchupsByWeek).map(Number).sort((a,b)=>a-b);
+  if (!weeks.length) {
+    t += `Season: ${STATE.currentSeason} | Status: Pre-season (no matchups played yet)\n`;
+    return t;
+  }
+  t += `Season: ${STATE.currentSeason} | Weeks loaded: ${weeks.join(', ')}\n\n`;
+  // Slim display: Wk | Team A pts > pts Team B | WINNER
+  t += `${'Wk'.padEnd(4)} ${'Winner'.padEnd(24)} ${'Score'.padEnd(16)} Loser\n`;
+  t += '-'.repeat(72) + '\n';
+  for (const week of weeks) {
+    const matchups = STATE.matchupsByWeek[week] || [];
+    if (!matchups.length) continue;
+    const byId = {};
+    matchups.forEach(m => {
+      if (!byId[m.matchup_id]) byId[m.matchup_id] = [];
+      byId[m.matchup_id].push(m);
+    });
+    for (const [mid, pair] of Object.entries(byId)) {
+      if (pair.length < 2) continue;
+      let [a, b] = pair;
+      if ((a.points || 0) < (b.points || 0)) [a, b] = [b, a]; // a = winner
+      const ra = STATE.rosters.find(r => r.roster_id === a.roster_id);
+      const rb = STATE.rosters.find(r => r.roster_id === b.roster_id);
+      const na = (ra ? getRosterOwner(ra).teamName : 'Team ' + a.roster_id).slice(0, 23);
+      const nb = (rb ? getRosterOwner(rb).teamName : 'Team ' + b.roster_id).slice(0, 23);
+      const pa = (a.points || 0).toFixed(2);
+      const pb = (b.points || 0).toFixed(2);
+      const score = `${pa}-${pb}`;
+      t += `${String(week).padEnd(4)} ${na.padEnd(24)} ${score.padEnd(16)} ${nb}\n`;
+    }
+  }
+  return t;
+}
+
+function buildPacketRosters(groupIndex) {
+  const sorted = [...STATE.rosters].sort((a, b) => {
+    return (b.settings?.wins || 0) - (a.settings?.wins || 0);
+  });
+  const chunkSize = 10;
+  const chunks = [];
+  for (let i = 0; i < sorted.length; i += chunkSize) chunks.push(sorted.slice(i, i + chunkSize));
+  const chunk = chunks[groupIndex] || chunks[0] || [];
+  const label = chunks.length > 1 ? ` (Part ${groupIndex + 1}/${chunks.length})` : '';
+  let t = `=== ALL ROSTERS — ${STATE.activeLeague.name} (${STATE.currentSeason})${label} ===\n\n`;
+  chunk.forEach(r => {
+    const { teamName, owner } = getRosterOwner(r);
+    const s = r.settings || {};
+    t += `--- ${teamName} (${owner}) | ${s.wins||0}-${s.losses||0} | PF: ${fmtPts(s.fpts, s.fpts_decimal)} ---\n`;
+    const starters = new Set(r.starters || []);
+    const taxi = new Set(r.taxi || []);
+    const ir = new Set(r.reserve || []);
+    const players = r.players || [];
+    const groups = { STARTER: [], BENCH: [], TAXI: [], IR: [] };
+    players.forEach(pid => {
+      if (ir.has(pid)) groups.IR.push(pid);
+      else if (taxi.has(pid)) groups.TAXI.push(pid);
+      else if (starters.has(pid)) groups.STARTER.push(pid);
+      else groups.BENCH.push(pid);
+    });
+    for (const [gname, pids] of Object.entries(groups)) {
+      if (!pids.length) continue;
+      t += `  [${gname}]\n`;
+      pids.forEach(pid => {
+        const p = STATE.playerDB[pid] || {};
+        const name = p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid);
+        const pos = p.position || '?';
+        const nfl = p.team || '[FA]';
+        const proj = STATE.projections[pid] !== undefined ? STATE.projections[pid].toFixed(1) : '—';
+        const pts = STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid].toFixed(1) : '—';
+        t += `    ${name} | ${pos} | ${nfl} | Pts(${STATE.statsSeason}): ${pts} | Proj: ${proj}\n`;
+      });
+    }
+    t += '\n';
+  });
+  return t;
+}
+
+function getRostersPartCount() {
+  return Math.ceil(STATE.rosters.length / 10);
+}
+
+function buildPacketFA() {
+  const rostered = new Set();
+  STATE.rosters.forEach(r => (r.players || []).forEach(pid => rostered.add(pid)));
+  const fas = [];
+  for (const [pid, player] of Object.entries(STATE.playerDB)) {
+    if (rostered.has(pid)) continue;
+    // Include any player with an active NFL team, or with prior season pts, or with a projection
+    if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+    const proj = STATE.projections[pid] || 0;
+    const pts = STATE.playerStats[pid] || 0;
+    fas.push({ pid, player, proj, pts });
+  }
+  // Sort by prior season pts desc, then proj desc as tiebreaker
+  fas.sort((a, b) => (b.pts !== a.pts) ? b.pts - a.pts : b.proj - a.proj);
+  let t = `=== FREE AGENTS — ${STATE.activeLeague.name} ===\n`;
+  t += `ALL unrostered players (${fas.length} available) | Stats: ${STATE.statsSeason} season | Proj: Week ${STATE.currentWeek} ${STATE.currentSeason}\n\n`;
+  t += `${'#'.padEnd(4)} ${'Player'.padEnd(26)} ${'Pos'.padEnd(5)} ${'NFL'.padEnd(5)} ${'Pts('+STATE.statsSeason+')'.padEnd(12)} ${'Proj'.padEnd(8)} Age\n`;
+  t += '-'.repeat(68) + '\n';
+  fas.forEach((fa, i) => {
+    const p = fa.player;
+    const name = (p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : fa.pid)).slice(0, 25);
+    const pos = (p.position || '?').slice(0, 4);
+    const nfl = p.team ? p.team.slice(0, 4) : '[FA]';
+    const pts = fa.pts > 0 ? fa.pts.toFixed(1) : '—';
+    const proj = fa.proj > 0 ? fa.proj.toFixed(2) : '—';
+    const age = p.age ? String(p.age) : '—';
+    t += `${String(i+1).padEnd(4)} ${name.padEnd(26)} ${pos.padEnd(5)} ${nfl.padEnd(5)} ${pts.padEnd(12)} ${proj.padEnd(8)} ${age}\n`;
+  });
+  return t;
+}
+
+function buildPacketTransactions() {
+  let t = `=== TRANSACTIONS — ${STATE.activeLeague.name} ===\n`;
+  t += `Week: ${Math.max(1, STATE.currentWeek - 1)} (most recent batch)\n\n`;
+  const txs = STATE.transactions || [];
+  if (!txs.length) return t + 'No transactions found.\n';
+  const sorted = [...txs].sort((a, b) => (b.created || 0) - (a.created || 0));
+  sorted.slice(0, 50).forEach(tx => {
+    const date = tx.created ? new Date(tx.created).toLocaleDateString() : '—';
+    const typeLabel = tx.type === 'trade' ? 'TRADE' : tx.type === 'free_agent' ? 'FA' : tx.type === 'waiver' ? 'WAIVER' : tx.type?.toUpperCase() || 'TX';
+    t += `[${typeLabel}] ${date}\n`;
+    if (tx.adds && Object.keys(tx.adds).length) {
+      for (const [pid, rid] of Object.entries(tx.adds)) {
+        const p = STATE.playerDB[pid] || {};
+        const roster = STATE.rosters.find(r => r.roster_id === rid);
+        const team = roster ? getRosterOwner(roster).teamName : 'Team ' + rid;
+        const pname = p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid);
+        t += `  ADD: ${pname} → ${team}\n`;
+      }
+    }
+    if (tx.drops && Object.keys(tx.drops).length) {
+      for (const [pid, rid] of Object.entries(tx.drops)) {
+        const p = STATE.playerDB[pid] || {};
+        const pname = p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid);
+        t += `  DROP: ${pname}\n`;
+      }
+    }
+    if (tx.draft_picks && tx.draft_picks.length) {
+      tx.draft_picks.forEach(pk => {
+        t += `  PICK: ${pk.season} Rd${pk.round}\n`;
+      });
+    }
+    t += '\n';
+  });
+  return t;
+}
+
+function buildPacketDraftPicks() {
+  let t = `=== DRAFT PICK ASSETS — ${STATE.activeLeague.name} ===\n`;
+  t += `Type: ${STATE.activeLeague.settings?.type === 2 ? 'Dynasty' : 'Standard'}\n\n`;
+  const picks = STATE.tradedPicks || [];
+  if (!picks.length) {
+    t += 'No traded future picks on record (or dynasty picks API returned empty).\n';
+    t += '\nNote: Each team owns their own picks unless traded.\n';
+    return t;
+  }
+  // In the traded_picks API, owner_id and roster_id are both roster_id values (integers)
+  // Must match against roster.roster_id, not roster.owner_id
+  const getRosterByRosterId = (id) => STATE.rosters.find(r => r.roster_id === id || r.roster_id === Number(id));
+
+  // Group by owner roster_id
+  const byOwner = {};
+  picks.forEach(pk => {
+    const key = pk.owner_id;
+    if (!byOwner[key]) byOwner[key] = [];
+    byOwner[key].push(pk);
+  });
+
+  // Sort by team name for clean output
+  const sorted = Object.entries(byOwner).sort(([aId], [bId]) => {
+    const ra = getRosterByRosterId(aId);
+    const rb = getRosterByRosterId(bId);
+    const na = ra ? getRosterOwner(ra).teamName : 'ZZZ';
+    const nb = rb ? getRosterOwner(rb).teamName : 'ZZZ';
+    return na.localeCompare(nb);
+  });
+
+  for (const [ownerId, pks] of sorted) {
+    const ownerRoster = getRosterByRosterId(ownerId);
+    const teamName = ownerRoster ? getRosterOwner(ownerRoster).teamName : 'Unknown Team (roster ' + ownerId + ')';
+    t += `--- ${teamName} ---\n`;
+    // Sort picks by season then round
+    const sortedPks = [...pks].sort((a, b) => a.season !== b.season ? a.season - b.season : a.round - b.round);
+    sortedPks.forEach(pk => {
+      const origRoster = getRosterByRosterId(pk.roster_id);
+      const origTeam = origRoster ? getRosterOwner(origRoster).teamName : 'Team ' + pk.roster_id;
+      t += `  ${pk.season} Round ${pk.round} (from ${origTeam})\n`;
+    });
+    t += '\n';
+  }
+  return t;
+}
+
+function buildPacketPower() {
+  const sorted = [...STATE.rosters].sort((a, b) => {
+    const aProj = totalRosterProj(a);
+    const bProj = totalRosterProj(b);
+    const aPf = parseFloat(fmtPts(a.settings?.fpts, a.settings?.fpts_decimal)) || 0;
+    const bPf = parseFloat(fmtPts(b.settings?.fpts, b.settings?.fpts_decimal)) || 0;
+    // Combined score: 60% projection + 40% normalized PF
+    return (bProj * 0.6 + bPf * 0.4) - (aProj * 0.6 + aPf * 0.4);
+  });
+  let t = `=== POWER RANKINGS — ${STATE.activeLeague.name} ===\n`;
+  t += `Based on season PF + current week projections\n\n`;
+  t += `${'#'.padEnd(3)} ${'Team'.padEnd(24)} ${'Owner'.padEnd(18)} ${'Record'.padEnd(8)} ${'PF'.padEnd(9)} Proj(Wk${STATE.currentWeek})\n`;
+  t += '-'.repeat(80) + '\n';
+  sorted.forEach((r, i) => {
+    const { teamName, owner } = getRosterOwner(r);
+    const s = r.settings || {};
+    const rec = `${s.wins||0}-${s.losses||0}`;
+    const pf = fmtPts(s.fpts, s.fpts_decimal);
+    const proj = totalRosterProj(r).toFixed(2);
+    t += `${String(i+1).padEnd(3)} ${teamName.slice(0,23).padEnd(24)} ${owner.slice(0,17).padEnd(18)} ${rec.padEnd(8)} ${pf.padEnd(9)} ${proj}\n`;
+  });
+  return t;
+}
+
+// v4.2: Added is_keeper capture/export. Sleeper's draft-picks payload includes a per-pick
+// is_keeper field (true/false/null) that the tool was fetching (for auction_cost) but discarding.
+// Keeper leagues (e.g. PLAYERZ BALL 2026) need to distinguish "this player was kept from last
+// season" from "this player was freshly drafted/auctioned this year" — auction_cost alone can't
+// do that, since a kept player's cost reflects what he cost when ORIGINALLY acquired, which looks
+// identical in shape to a fresh pick's cost. is_keeper is now captured everywhere auction_cost
+// already was (prior-season draft picks, current-season draft/auction picks, FAAB/waiver adds —
+// which are always explicit false, never keeper picks) and surfaced on: rostered players (was
+// missing auction_cost AND is_keeper entirely), resolveMyPlayers, and the live picks_made_log
+// (pulled directly from the pick object, not the aggregated map, since that's the authoritative
+// per-pick source). Also added summary.keepers_flagged_count so a consumer can tell at a glance
+// whether Sleeper actually returned keeper data for this league before relying on is_keeper being
+// non-null anywhere. IMPORTANT: is_keeper null means "Sleeper reported nothing for this player,"
+// not "confirmed not a keeper" — only explicit false means that. Never treat null as false.
+//
+// v4.4: Fixed a gap in the v4.3 DEF patch — the DEF stat keys (sack/int/fum_rec/ff/safe/
+// blk_kick/def_td) were added to POS_STAT_KEYS (which selects which keys get output into
+// season_stat_history.stats) but not to ACCUM_STAT_KEYS (the separate hardcoded list that
+// actually sums raw weekly values into entry.acc). Result: season_stat_history.stats for
+// every DEF was populating but showing all zeros — gp/pts_history were correct (those don't
+// go through this accumulator), only the stat breakdown was empty. Fix: added the same 7
+// keys to ACCUM_STAT_KEYS.
+// v4.3: Three fixes, all from the same class of "DEF was never accounted for" gap:
+// (1) DEF stats blackout — POS_STAT_KEYS had no DEF entry, so the v4.0/v4.1
+// hasStatProduction corroboration check fell back to SPLIT_KEYS (offense/IDP fields
+// only, no sack/int/fum_rec/ff/safe/blk_kick/def_td), making hasStatProduction always
+// false for every team defense. Result: didPlay was always false for DEF, silently
+// zeroing out games_played_history/pts_history/season_stat_history/weekly_trend for
+// every DEF in every export. Fix: added a DEF entry to POS_STAT_KEYS (for
+// season_stat_history.stats) AND carved DEF out of the hasStatProduction requirement
+// entirely in both loops (~line 1617 season-history, ~line 1531 weekly-trend) — a real,
+// fully-played defensive game can legitimately record zero of those events (a shutout
+// loss with no sacks/turnovers/blocks), so unlike an individual player, gp alone is a
+// reliable played signal for a team unit.
+// (2) Free-agent/positional_availability exclusion filter (5 locations) dropped a
+// player if team, playerStats, AND projections were all empty — which happens for any
+// player, including active rostered ones, in a preseason export before stats/proj
+// exist. Confirmed case: Saquon Barkley missing from two live PLAYERZ BALL 2026 auction
+// exports 23 min apart despite being visibly available on Sleeper's board — his
+// playerDB entry had a blank team field at export time, so he failed all three checks.
+// Fix: added "&& player.status !== 'Active'" so an explicitly active player is never
+// dropped regardless of team/stats/projection gaps.
+// (3) Free-agent per-position cap whitelist (2 locations) was missing 'DEF', so
+// posCap.DEF was never populated from the league's real roster_positions and silently
+// defaulted to a 1-slot cap basis. Not currently visible (32 real team defenses sit
+// well under the default's ~56-cap ceiling at FA_CAP_MULT=3.5), but wrong if a league
+// ever carries 2+ DEF slots. Fix: added 'DEF' to both whitelist arrays.
+//
+// v4.1: The v4.0 fix below only tightened the branch where Sleeper's weekly payload includes
+// an explicit 'gp' field. Players on IR for a season-ending injury frequently get weekly entries
+// that OMIT 'gp' entirely (rather than gp:0) once inactive, which fell through to the untouched
+// 'else' fallback — originally written for untracked positions (OL/FB/LS/P) — that only checked
+// "tracked position + any key present," with no requirement that the key reflect real production.
+// Confirmed case: Micah McFadden (LB, 2025) suffered a Week 1 season-ending foot injury (1 real
+// game played) but games_played_history.most_recent_season still read 17, because his post-injury
+// weekly entries had no 'gp' key and fell into the loose fallback. Season stat totals (1 solo
+// tackle + 1 assist) correctly reflected only 1 game, exposing the gp-counter/stat-accumulator
+// mismatch. Fix: both branches (season-history loop at ~line 1610 and weekly_trend loop at
+// ~line 1524) now require the same hasStatProduction corroboration regardless of whether 'gp'
+// is present, closing the gap for IR/season-ending-injury players.
+// v4.0: Fixed games_played_history / durability_flag / weekly_trend inflation for players who
+// missed most or all of a season on IR. Root cause: both the season-history loop and the weekly
+// playerStats loop treated Sleeper's per-week 'gp' field as a reliable "this player suited up"
+// signal, but gp can read >0 for a week even when the player recorded zero production — it
+// appears to reflect that the player's team had a game that week, not that the player himself
+// played. Confirmed case: a player who suffered a Week 1 season-ending injury (1 real game played)
+// was showing games_played_history.most_recent_season = 17, massively overstating durability and
+// making his rock-bottom point total look like a lost role/bad year rather than a lost season.
+// Fix: gp>0 is no longer sufficient on its own — also require at least one nonzero tracked stat
+// that week as corroborating evidence of actual participation (see hasStatProduction in both
+// loops). Also patched an equivalent oversight that would've allowed the same bug to leak into
+// STATE.weeklyPts (used for weekly_trend), which shares the identical gp-only pattern.
+// v3.11: renamed games_played_history/pts_history/season_stat_history's 'current_season' key to
+// 'most_recent_season' (see buildDurabilityProfile below). These fields are anchored to
+// STATE.statsSeason (currentSeason - 1), so 'current_season' never actually meant the real current
+// season — it meant the most recent completed one. That collided in naming (not in value — no bug
+// existed) with the separate top-level pts_prior_season field. Also corrected stale 'v3.9' string
+// literals in <title> and the on-page version badge that were left over from before the v3.10 patch.
+// v3.10 patch: totalRosterProj previously summed only roster.starters — i.e. whatever
+// lineup the manager currently has set in Sleeper — and mislabeled that as an "optimal
+// lineup score" throughout Power Rankings output. It never considered bench players or
+// reassigned anyone. Verified against a fresh full-league export: the old value matched
+// a true re-optimized lineup for only 2/32 teams (teams whose manager already happened to
+// have their best lineup set); the other 30 were understated by up to ~46 pts because
+// better bench players were sitting unused in the calculation. Root-caused and fixed here
+// by actually solving the assignment problem (starters + bench pool -> roster_positions
+// slots, respecting FLEX/IDP_FLEX/dual-position eligibility) via the Hungarian algorithm,
+// which is the real optimal-lineup solve the "Optimal Lineup Score" label always implied.
+function hungarianMinAssignment(costMatrix) {
+  // Classic O(n^3) Kuhn-Munkres for a square cost matrix (minimize). 1-indexed internally
+  // per the standard reference implementation; returns a 0-indexed row->col assignment array.
+  const n = costMatrix.length;
+  const INF = Infinity;
+  const u = new Array(n + 1).fill(0);
+  const v = new Array(n + 1).fill(0);
+  const p = new Array(n + 1).fill(0); // p[j] = row currently assigned to col j
+  const way = new Array(n + 1).fill(0);
+
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Array(n + 1).fill(INF);
+    const used = new Array(n + 1).fill(false);
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = INF, j1 = -1;
+      for (let j = 1; j <= n; j++) {
+        if (!used[j]) {
+          const cur = costMatrix[i0 - 1][j - 1] - u[i0] - v[j];
+          if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+          if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+        }
+      }
+      for (let j = 0; j <= n; j++) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+        else { minv[j] -= delta; }
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+    } while (j0 !== 0);
+  }
+
+  const rowToCol = new Array(n).fill(-1);
+  for (let j = 1; j <= n; j++) {
+    if (p[j] !== 0) rowToCol[p[j] - 1] = j - 1;
+  }
+  return rowToCol;
+}
+
+function playerProjValue(pid) {
+  // Same fallback rule as before (v2.6): use the real weekly projection when Sleeper
+  // provides a nonzero one; otherwise approximate from prior-season total / 17 games.
+  const proj = STATE.projections[pid];
+  if (proj) return proj;
+  const pts = STATE.playerStats[pid];
+  if (pts) return pts / 17;
+  return 0;
+}
+
+function playerEligiblePositions(pid) {
+  const p = STATE.playerDB[pid] || {};
+  if (p.fantasy_positions && p.fantasy_positions.length) return p.fantasy_positions;
+  return p.position ? [p.position] : [];
+}
+
+function slotEligible(playerPositions, slot) {
+  const FLEX_ELIGIBLE = { FLEX:['RB','WR','TE'], SUPER_FLEX:['QB','RB','WR','TE'], IDP_FLEX:['LB','DL','DB'], WR_RB_TE:['RB','WR','TE'], WR_RB:['RB','WR'] };
+  if (FLEX_ELIGIBLE[slot]) return playerPositions.some(pos => FLEX_ELIGIBLE[slot].includes(pos));
+  return playerPositions.includes(slot);
+}
+
+function totalRosterProj(roster) {
+  const rosterPositions = (STATE.activeLeague.roster_positions || []).filter(s => s !== 'BN');
+  if (!rosterPositions.length) return 0;
+
+  // Full eligible pool = starters + bench (everyone except taxi/IR, which can't start).
+  const starterSet = new Set((roster.starters || []).filter(pid => pid && pid !== '0'));
+  const taxiSet = new Set(roster.taxi || []);
+  const irSet = new Set(roster.reserve || []);
+  const pool = (roster.players || []).filter(pid => !taxiSet.has(pid) && !irSet.has(pid));
+  starterSet.forEach(pid => { if (!pool.includes(pid)) pool.push(pid); });
+
+  const n = Math.max(pool.length, rosterPositions.length);
+  const BIG = 1e6;
+  const cost = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < n; j++) {
+      if (i < pool.length && j < rosterPositions.length) {
+        const positions = playerEligiblePositions(pool[i]);
+        row.push(slotEligible(positions, rosterPositions[j]) ? -playerProjValue(pool[i]) : BIG);
+      } else {
+        row.push(0);
+      }
+    }
+    cost.push(row);
+  }
+
+  const assign = hungarianMinAssignment(cost);
+  let total = 0;
+  for (let i = 0; i < pool.length; i++) {
+    const j = assign[i];
+    if (j !== -1 && j < rosterPositions.length && cost[i][j] < BIG) {
+      total += playerProjValue(pool[i]);
+    }
+  }
+  return Math.round(total * 100) / 100;
+}
+
+// ══════════════════════════════════════════════
+//  PRIOR SEASON PACKET (v3.4)
+// ══════════════════════════════════════════════
+function buildPacketPrevSeason() {
+  const prev = STATE.prevSeasonData;
+  const prevYear = STATE.statsSeason; // e.g. "2025"
+  let t = `=== PRIOR SEASON (${prevYear}) — ${STATE.activeLeague.name} ===\n`;
+  if (!prev.leagueId) {
+    t += `No prior season linked (previous_league_id not found).\n`;
+    t += `This may be the league's first season, or the link was not set in Sleeper.\n`;
+    return t;
+  }
+  t += `League ID: ${prev.leagueId}\n\n`;
+
+  // Standings
+  if (prev.standings.length) {
+    t += `--- FINAL STANDINGS ---\n`;
+    t += `${'#'.padEnd(3)} ${'Team'.padEnd(24)} ${'Owner'.padEnd(18)} ${'W-L-T'.padEnd(8)} ${'PF'.padEnd(9)} PA\n`;
+    t += '-'.repeat(75) + '\n';
+    prev.standings.forEach((r, i) => {
+      const rec = `${r.wins}-${r.losses}${r.ties ? '-'+r.ties : ''}`;
+      const pf = (r.fpts + r.fpts_decimal/100).toFixed(2);
+      const pa = (r.fpts_against + r.fpts_against_decimal/100).toFixed(2);
+      t += `${String(i+1).padEnd(3)} ${r.teamName.slice(0,23).padEnd(24)} ${r.owner.slice(0,17).padEnd(18)} ${rec.padEnd(8)} ${pf.padEnd(9)} ${pa}\n`;
+    });
+    t += '\n';
+  } else {
+    t += `No standings data available.\n\n`;
+  }
+
+  // Matchup history
+  const weeks = Object.keys(prev.matchups).map(Number).sort((a,b)=>a-b);
+  if (weeks.length) {
+    t += `--- MATCHUP HISTORY (${prevYear}) ---\n`;
+    for (const week of weeks) {
+      const matchups = prev.matchups[week] || [];
+      if (!matchups.length) continue;
+      t += `Week ${week}:\n`;
+      const byId = {};
+      matchups.forEach(m => {
+        if (!byId[m.matchup_id]) byId[m.matchup_id] = [];
+        byId[m.matchup_id].push(m);
+      });
+      for (const pair of Object.values(byId)) {
+        if (pair.length < 2) continue;
+        const [a, b] = pair;
+        const ra = prev.rosters.find(r => r.roster_id === a.roster_id);
+        const rb = prev.rosters.find(r => r.roster_id === b.roster_id);
+        const ua = ra ? (prev.users[ra.owner_id] || {}) : {};
+        const ub = rb ? (prev.users[rb.owner_id] || {}) : {};
+        const na = ua.metadata?.team_name || ua.display_name || 'Team ' + a.roster_id;
+        const nb = ub.metadata?.team_name || ub.display_name || 'Team ' + b.roster_id;
+        const pa = (a.points || 0).toFixed(2);
+        const pb = (b.points || 0).toFixed(2);
+        const win = parseFloat(pa) > parseFloat(pb) ? '>' : '<';
+        t += `  ${na.slice(0,22).padEnd(22)} ${pa.padStart(7)} ${win} ${pb.padStart(7)}  ${nb.slice(0,22)}\n`;
+      }
+    }
+  } else {
+    t += `No matchup history available.\n`;
+  }
+  return t;
+}
+
+// ══════════════════════════════════════════════
+//  AGE / EXPERIENCE PROFILE (v1.2)
+// ══════════════════════════════════════════════
+function buildPacketAgeProfile() {
+  const lg = STATE.activeLeague;
+  let t = `=== AGE / EXPERIENCE PROFILE — ${lg.name} (${STATE.currentSeason}) ===\n\n`;
+  t += `${'#'.padEnd(3)} ${'Team'.padEnd(24)} ${'Owner'.padEnd(18)} ${'Avg Age'.padEnd(9)} ${'Avg Exp'.padEnd(9)} ${'Youngest'.padEnd(20)} Oldest\n`;
+  t += '-'.repeat(90) + '\n';
+
+  const sorted = [...STATE.rosters].sort((a, b) => (b.settings?.wins||0) - (a.settings?.wins||0));
+  sorted.forEach((r, i) => {
+    const { teamName, owner } = getRosterOwner(r);
+    const players = (r.players || []).map(pid => STATE.playerDB[pid]).filter(Boolean);
+    const ages = players.map(p => p.age).filter(a => a != null && a > 0);
+    const exps = players.map(p => p.years_exp).filter(e => e != null);
+    const avgAge = ages.length ? (ages.reduce((s,v) => s+v, 0) / ages.length).toFixed(1) : '—';
+    const avgExp = exps.length ? (exps.reduce((s,v) => s+v, 0) / exps.length).toFixed(1) : '—';
+    const youngest = ages.length ? (() => {
+      const minAge = Math.min(...ages);
+      const p = players.find(pl => pl.age === minAge);
+      return p ? `${(p.full_name || p.first_name || '?').slice(0,12)} (${minAge})` : '—';
+    })() : '—';
+    const oldest = ages.length ? (() => {
+      const maxAge = Math.max(...ages);
+      const p = players.find(pl => pl.age === maxAge);
+      return p ? `${(p.full_name || p.first_name || '?').slice(0,12)} (${maxAge})` : '—';
+    })() : '—';
+    t += `${String(i+1).padEnd(3)} ${teamName.slice(0,23).padEnd(24)} ${owner.slice(0,17).padEnd(18)} ${String(avgAge).padEnd(9)} ${String(avgExp).padEnd(9)} ${youngest.padEnd(20)} ${oldest}\n`;
+  });
+
+  // League averages
+  const allAges = [], allExps = [];
+  STATE.rosters.forEach(r => {
+    (r.players||[]).forEach(pid => {
+      const p = STATE.playerDB[pid];
+      if (p?.age > 0) allAges.push(p.age);
+      if (p?.years_exp != null) allExps.push(p.years_exp);
+    });
+  });
+  const leagueAvgAge = allAges.length ? (allAges.reduce((s,v)=>s+v,0)/allAges.length).toFixed(1) : '—';
+  const leagueAvgExp = allExps.length ? (allExps.reduce((s,v)=>s+v,0)/allExps.length).toFixed(1) : '—';
+  t += '-'.repeat(90) + '\n';
+  t += `${'LEAGUE AVG'.padEnd(50)} ${String(leagueAvgAge).padEnd(9)} ${leagueAvgExp}\n`;
+  return t;
+}
+
+// ══════════════════════════════════════════════
+//  LEAN TEAM PACKET (totals only, v1.2)
+// ══════════════════════════════════════════════
+function openTeamPacketLean(rosterId) {
+  const roster = STATE.rosters.find(r => r.roster_id === rosterId);
+  if (!roster) return;
+  const { teamName, owner } = getRosterOwner(roster);
+  const s = roster.settings || {};
+  const players = roster.players || [];
+  const starters = new Set(roster.starters || []);
+  const taxi = new Set(roster.taxi || []);
+  const ir = new Set(roster.reserve || []);
+
+  let totalPts = 0, totalProj = 0, count = 0, starterCount = 0;
+  let starterPts = 0, starterProj = 0;
+  const posSummary = {};
+
+  players.forEach(pid => {
+    const p = STATE.playerDB[pid] || {};
+    const pos = p.position || 'UNK';
+    const pts = STATE.playerStats[pid] || 0;
+    const proj = STATE.projections[pid] || 0;
+    totalPts += pts; totalProj += proj; count++;
+    if (!posSummary[pos]) posSummary[pos] = { count: 0, pts: 0, proj: 0 };
+    posSummary[pos].count++;
+    posSummary[pos].pts += pts;
+    posSummary[pos].proj += proj;
+    if (starters.has(pid)) { starterPts += pts; starterProj += proj; starterCount++; }
+  });
+
+  const auctionEntries = Object.entries(STATE.auctionCosts)
+    .filter(([pid]) => players.includes(pid))
+    .sort((a,b) => b[1].cost - a[1].cost);
+
+  let t = `=== ${teamName} | LEAN PACKET ===\n`;
+  t += `Owner: ${owner} | League: ${STATE.activeLeague.name} | Season: ${STATE.currentSeason}\n`;
+  t += `Record: ${s.wins||0}-${s.losses||0} | PF: ${fmtPts(s.fpts, s.fpts_decimal)}\n\n`;
+  t += `--- TOTALS ---\n`;
+  t += `Roster size:   ${count} players (${starterCount} starters)\n`;
+  t += `Total Pts(${STATE.statsSeason}): ${totalPts.toFixed(1)}\n`;
+  t += `Starter Pts:   ${starterPts.toFixed(1)}\n`;
+  t += `Total Proj(Wk${STATE.currentWeek}): ${totalProj.toFixed(1)}\n`;
+  t += `Starter Proj:  ${starterProj.toFixed(1)}\n\n`;
+  t += `--- BY POSITION ---\n`;
+  const posOrder = ['QB','RB','WR','TE','K','DEF','DL','LB','DB','IDP_FLEX'];
+  const sortedPos = Object.keys(posSummary).sort((a,b) => {
+    const ai = posOrder.indexOf(a), bi = posOrder.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+  sortedPos.forEach(pos => {
+    const d = posSummary[pos];
+    t += `  ${pos.padEnd(8)} ${String(d.count).padEnd(3)} players | Pts: ${d.pts.toFixed(1).padEnd(8)} | Proj: ${d.proj.toFixed(1)}\n`;
+  });
+  if (auctionEntries.length) {
+    t += `\n--- AUCTION COSTS ---\n`;
+    auctionEntries.slice(0, 20).forEach(([pid, data]) => {
+      const p = STATE.playerDB[pid] || {};
+      const name = (p.full_name || pid).slice(0, 24);
+      t += `  $${String(data.cost).padEnd(6)} ${name}\n`;
+    });
+  }
+  openModal(`${teamName} — Lean Packet`, t);
+}
+// v3.0: Resolve a comma-separated free-text list of player names / pick labels
+function openModal(title, text) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-textarea').value = text;
+  document.getElementById('copy-status').textContent = '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('btn-copy-packet').onclick = () => {
+  const ta = document.getElementById('modal-textarea');
+  ta.select();
+  document.execCommand('copy');
+  const st = document.getElementById('copy-status');
+  st.textContent = '✓ Copied!';
+  setTimeout(() => st.textContent = '', 2000);
+};
+
+// ══════════════════════════════════════════════
+//  JSON DOWNLOAD
+// ══════════════════════════════════════════════
+document.getElementById('btn-json-download').onclick = () => {
+  // Build star player sets for JSON tagging
+  // Star = top 24 overall by prior season pts OR top 3 at position
+  const allPtsArr = Object.entries(STATE.playerStats).map(([pid, pts]) => ({ pid, pts })).sort((a,b) => b.pts - a.pts);
+  const top24Overall = new Set(allPtsArr.slice(0, 24).map(x => x.pid));
+  const byPos = {};
+  for (const [pid, pts] of Object.entries(STATE.playerStats)) {
+    const pos = STATE.playerDB[pid]?.position || 'UNK';
+    if (!byPos[pos]) byPos[pos] = [];
+    byPos[pos].push({ pid, pts });
+  }
+  const top3ByPos = new Set();
+  for (const arr of Object.values(byPos)) {
+    arr.sort((a,b) => b.pts - a.pts).slice(0,3).forEach(x => top3ByPos.add(x.pid));
+  }
+
+  // Build enriched rosters with player names resolved
+  const enrichedRosters = STATE.rosters.map(r => {
+    const { teamName, owner, orphan } = getRosterOwner(r);
+    const resolvePlayers = (pids) => (pids || []).map(pid => {
+      const p = STATE.playerDB[pid] || {};
+      const isStar = top24Overall.has(pid) || top3ByPos.has(pid);
+      const isUnsigned = !p.team; // no NFL team = unsigned/FA
+      const age = p.age || null;
+      const exp = p.years_exp !== undefined ? p.years_exp : null;
+      // dynasty_caution: flag players likely past prime or injury-risk age by position
+      const POS_AGE_WARN = { QB:36, RB:29, WR:31, TE:32, DL:32, LB:31, DB:33 };
+      const ageThresh = POS_AGE_WARN[p.position] || 33;
+      const dynastyCaution = age && age >= ageThresh ? `age_${age}` : (exp !== null && exp >= 10 ? `exp_${exp}yr` : undefined);
+      // taxi_eligible: Sleeper taxi = years_exp 0 or 1 (rookie or 2nd year), no hard rule but common standard
+      const taxiEligible = exp !== null && exp <= 1 ? true : undefined;
+      const splits = STATE.playerStatSplits[pid] || undefined;
+      const durability = buildDurabilityProfile(pid, p.position);
+      return {
+        player_id: pid,
+        name: p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid),
+        position: p.position || '?',
+        nfl_team: p.team || '—',
+        age,
+        years_exp: exp,
+        pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
+        stat_splits: splits,
+        proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+        star: isStar || undefined,
+        fa_unsigned: isUnsigned || undefined,
+        dynasty_caution: dynastyCaution,
+        taxi_eligible: taxiEligible,
+        games_played_history: durability.games_played_history,
+        pts_history: durability.pts_history,
+        durability_flag: durability.durability_flag,
+        season_stat_history: durability.season_stat_history,
+        injury_status_current: p.injury_status || null,
+        injury_freshness: buildInjuryFreshness(pid), // v2.8
+        weekly_trend: buildWeeklyTrend(pid), // v2.8
+        draft_capital: STATE.draftedPicks[pid] || null,
+        fantasy_positions: p.fantasy_positions || null, // v3.9: rostered players were missing multi-position
+        // eligibility (e.g. DL/LB dual-eligible edge rushers) — free agents already had this (v3.1).
+        // Fixes DL/LB (and other) dual-eligibility being silently dropped for any rostered player.
+        // v4.2: auction_cost/is_keeper were captured in STATE.auctionCosts but never surfaced on
+        // rostered players — the field keeper leagues actually need (was this player kept this
+        // offseason, and what did/will he cost?). is_keeper is true/false/null: null means Sleeper
+        // didn't report a keeper flag for this player (e.g. never appeared in a draft-picks payload),
+        // NOT "confirmed not a keeper" — only an explicit false means that.
+        auction_cost: STATE.auctionCosts[pid]?.cost ?? null,
+        is_keeper: STATE.auctionCosts[pid]?.is_keeper ?? null,
+      };
+    });
+
+    // Roster size violation check (v3.8 fix)
+    // Sleeper confirms taxi and IR/reserve players do NOT count against a team's
+    // roster limit (source: support.sleeper.com "How do I set positional limits?").
+    // roster_positions.length is ONLY the starters+bench cap; taxi_slots and
+    // reserve_slots are separate league settings layered on top of it. The old
+    // check compared r.players.length (which includes taxi+reserve players)
+    // directly against roster_positions.length, so any team using taxi/IR, or
+    // any team with unfilled bench slots, was mislabeled as a "violation."
+    const rosterPositions = STATE.activeLeague.roster_positions || [];
+    const benchSlotTotal = rosterPositions.filter(p => p === 'BN').length;
+    const taxiSlots = STATE.activeLeague.settings?.taxi_slots || 0;
+    const reserveSlots = STATE.activeLeague.settings?.reserve_slots || 0;
+    const rosterCapacity = rosterPositions.length ? (rosterPositions.length + taxiSlots + reserveSlots) : null;
+    const actualCount = (r.players || []).length;
+    // A real violation is only when a team exceeds its total legal capacity
+    // (starters + bench + taxi + reserve). Unfilled bench slots are normal and
+    // are reported separately via bench_slots_open, not flagged as a violation.
+    const rosterSizeViolation = rosterCapacity && actualCount > rosterCapacity
+      ? { expected_max: rosterCapacity, actual: actualCount, breakdown: { roster_positions: rosterPositions.length, taxi_slots: taxiSlots, reserve_slots: reserveSlots } }
+      : undefined;
+
+    // Compute bench = all players minus starters, taxi, and IR
+    const starterSet = new Set((r.starters || []).filter(pid => pid && pid !== '0'));
+    const taxiSet = new Set(r.taxi || []);
+    const irSet = new Set(r.reserve || []);
+    const benchPids = (r.players || []).filter(pid =>
+      !starterSet.has(pid) && !taxiSet.has(pid) && !irSet.has(pid)
+    );
+    const benchSlotsOpen = benchSlotTotal ? { filled: benchPids.length, total: benchSlotTotal } : undefined;
+
+    return {
+      roster_id: r.roster_id,
+      team_name: teamName,
+      owner_display: owner,
+      orphan: orphan || false,
+      roster_size_violation: rosterSizeViolation,
+      bench_slots_open: benchSlotsOpen,
+      settings: r.settings,
+      starters: resolvePlayers(Array.from(starterSet)),
+      bench: resolvePlayers(benchPids),
+      taxi: resolvePlayers(r.taxi),
+      reserve: resolvePlayers(r.reserve),
+    };
+  });
+
+  // v2.5: standings + power_rankings — same computation as the light export, added here so
+  // Power Rankings work doesn't require recomputing rank/sort from raw roster.settings by hand.
+  const sortedRostersFull = [...STATE.rosters].sort((a, b) => {
+    const aw = a.settings?.wins || 0, bw = b.settings?.wins || 0;
+    if (bw !== aw) return bw - aw;
+    return (b.settings?.fpts || 0) - (a.settings?.fpts || 0);
+  });
+  const standingsFull = sortedRostersFull.map((r, i) => {
+    const { teamName, owner } = getRosterOwner(r);
+    const s = r.settings || {};
+    return {
+      rank: i + 1,
+      roster_id: r.roster_id,
+      team_name: teamName,
+      owner: owner,
+      record: `${s.wins||0}-${s.losses||0}${s.ties?'-'+s.ties:''}`,
+      pf: parseFloat(fmtPts(s.fpts, s.fpts_decimal)) || 0,
+      pa: parseFloat(fmtPts(s.fpts_against, s.fpts_against_decimal)) || 0,
+    };
+  });
+  const powerRankingsFull = [...STATE.rosters].sort((a, b) => totalRosterProj(b) - totalRosterProj(a)).map((r, i) => {
+    const { teamName } = getRosterOwner(r);
+    return {
+      power_rank: i + 1,
+      team_name: teamName,
+      starter_proj: totalRosterProj(r),
+      pf: parseFloat(fmtPts(r.settings?.fpts, r.settings?.fpts_decimal)) || 0,
+    };
+  });
+
+  const snapshot = {
+    exported_at: new Date().toISOString(),
+    tool_version: '4.5',
+    standings: standingsFull,
+    power_rankings: powerRankingsFull,
+    // ── SUMMARY HEADER (v1.2) ──────────────────────────────────
+    summary: {
+      league_name: STATE.activeLeague.name,
+      league_id: STATE.activeLeague.league_id,
+      season: STATE.currentSeason,
+      stats_season: STATE.statsSeason,
+      current_week: STATE.currentWeek,
+      scoring_label: getScoringLabel(STATE.activeLeague),
+      format: STATE.activeLeague.settings?.type === 2 ? 'Dynasty' : STATE.activeLeague.settings?.type === 1 ? 'Keeper' : 'Redraft',
+      total_rosters: STATE.activeLeague.total_rosters,
+      commissioner: STATE.username,
+      roster_positions: STATE.activeLeague.roster_positions || [],
+      has_idp: (STATE.activeLeague.roster_positions || []).some(p => ['DL','LB','DB','IDP_FLEX'].includes(p)),
+      waiver_type: STATE.activeLeague.settings?.waiver_type === 2 ? 'FAAB' : STATE.activeLeague.settings?.waiver_type === 0 ? 'Rolling' : 'Standard',
+      playoff_week_start: STATE.activeLeague.settings?.playoff_week_start || null,
+      playoff_teams: STATE.activeLeague.settings?.playoff_teams || null,
+      top_team_by_pf: (() => {
+        const top = [...STATE.rosters].sort((a,b) => (b.settings?.fpts||0)-(a.settings?.fpts||0))[0];
+        return top ? getRosterOwner(top).teamName : '—';
+      })(),
+      total_players_rostered: STATE.rosters.reduce((s,r) => s + (r.players||[]).length, 0),
+      auction_costs_loaded: Object.keys(STATE.auctionCosts).length,
+      // v4.2: count of players where Sleeper explicitly reported is_keeper (true or false) —
+      // NOT total rostered players. If this is 0, is_keeper will be null for everyone in this
+      // export and no keeper-vs-fresh-pick distinction can be drawn from the data.
+      keepers_flagged_count: Object.values(STATE.auctionCosts).filter(v => v.is_keeper === true || v.is_keeper === false).length,
+      free_agents_embedded: (() => {
+        const rostered = new Set();
+        STATE.rosters.forEach(r => (r.players || []).forEach(pid => rostered.add(pid)));
+        return Object.entries(STATE.playerDB).filter(([pid, p]) =>
+          !rostered.has(pid) && (p.team || STATE.playerStats[pid] || STATE.projections[pid])
+        ).length;
+      })(),
+    },
+    // ───────────────────────────────────────────────────────────
+    commissioner: STATE.username,
+    league: STATE.activeLeague,
+    season: STATE.currentSeason,
+    stats_season: STATE.statsSeason,
+    current_week: STATE.currentWeek,
+    scoring_label: getScoringLabel(STATE.activeLeague),
+    users: STATE.leagueUsers,
+    rosters: enrichedRosters,
+    matchups: STATE.matchupsByWeek,
+    transactions: STATE.transactions,
+    trade_log: buildTradeLog(),
+    traded_picks: STATE.tradedPicks,
+    projections_week: STATE.currentWeek,
+    prior_season_stats: STATE.playerStats,
+    projections: STATE.projections,
+    scoring_map: STATE.scoringMap,
+    auction_costs: STATE.auctionCosts,
+    faab_efficiency: buildFaabEfficiency(), // v2.8
+    positional_availability: (() => {
+      const rostered = new Set();
+      STATE.rosters.forEach(r => (r.players || []).forEach(pid => rostered.add(pid)));
+      const summary = {};
+      for (const [pid, player] of Object.entries(STATE.playerDB)) {
+        if (rostered.has(pid)) continue;
+        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        const pos = player.position || 'UNK';
+        if (!summary[pos]) summary[pos] = { count: 0, top_pts: null, top_name: null };
+        summary[pos].count++;
+        const pts = STATE.playerStats[pid] || 0;
+        if (pts > 0 && (summary[pos].top_pts === null || pts > summary[pos].top_pts)) {
+          summary[pos].top_pts = pts;
+          summary[pos].top_name = player.full_name || (player.first_name ? `${player.first_name} ${player.last_name}` : pid);
+        }
+      }
+      return summary;
+    })(),
+    player_stat_splits: STATE.playerStatSplits,
+    free_agents: (() => {
+      // v2.2: per-position cap using roster_positions + total_teams so it scales correctly
+      const rp = STATE.activeLeague.roster_positions || [];
+      const teams = STATE.rosters.length || 10;
+      const FLEX_ELIGIBLE = { FLEX:['RB','WR','TE'], SUPER_FLEX:['QB','RB','WR','TE'], IDP_FLEX:['LB','DL','DB'], WR_RB_TE:['RB','WR','TE'], WR_RB:['RB','WR'] };
+      const FA_CAP_MULT = 3.5;
+      const posCap = {};
+      for (const slot of rp) {
+        if (FLEX_ELIGIBLE[slot]) {
+          const eligible = FLEX_ELIGIBLE[slot];
+          const share = 1 / eligible.length;
+          for (const ep of eligible) posCap[ep] = (posCap[ep] || 0) + share;
+        } else if (['QB','RB','WR','TE','K','DEF','LB','DL','DB','DE','DT','CB'].includes(slot)) {
+          posCap[slot] = (posCap[slot] || 0) + 1;
+        }
+      }
+      // merge DE/DT->DL, CB->DB for cap purposes
+      if (posCap.DE || posCap.DT) { posCap.DL = (posCap.DL || 0) + (posCap.DE || 0) + (posCap.DT || 0); delete posCap.DE; delete posCap.DT; }
+      if (posCap.CB) { posCap.DB = (posCap.DB || 0) + posCap.CB; delete posCap.CB; }
+      const getPosCap = pos => {
+        const pk = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+        return Math.ceil((posCap[pk] || 1) * teams * FA_CAP_MULT);
+      };
+      const rostered = new Set();
+      STATE.rosters.forEach(r => (r.players || []).forEach(pid => rostered.add(pid)));
+      const fasAll = [];
+      for (const [pid, player] of Object.entries(STATE.playerDB)) {
+        if (rostered.has(pid)) continue;
+        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        const durability = buildDurabilityProfile(pid, player.position);
+        fasAll.push({
+          player_id: pid,
+          name: player.full_name || (player.first_name ? `${player.first_name} ${player.last_name}` : pid),
+          position: player.position || '?',
+          nfl_team: player.team || '—',
+          age: player.age || null,
+          years_exp: player.years_exp !== undefined ? player.years_exp : null,
+          pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
+          proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+          // v3.6.1: Sleeper returns a literal 0 (not null/undefined) when it has no real
+          // projection for a player — standard behavior for IDP/K and common for many FAs
+          // generally. A bare 0 could be misread as "projected to score zero points" rather
+          // than "no projection data available." This flag disambiguates that without
+          // altering the underlying value (never fabricate a number).
+          proj_current_week_is_placeholder: STATE.projections[pid] === 0,
+          injury_status: player.injury_status || null,
+          active_status: player.status || null,
+          games_played_history: durability.games_played_history,
+          pts_history: durability.pts_history,
+          durability_flag: durability.durability_flag,
+          season_stat_history: durability.season_stat_history,
+          injury_status_current: player.injury_status || null,
+          injury_freshness: buildInjuryFreshness(pid), // v2.8
+          weekly_trend: buildWeeklyTrend(pid), // v2.8
+          draft_capital: STATE.draftedPicks[pid] || null,
+        });
+      }
+      fasAll.sort((a, b) => {
+        const ap = a.pts_prior_season || 0, bp = b.pts_prior_season || 0;
+        if (bp !== ap) return bp - ap;
+        return (b.proj_current_week || 0) - (a.proj_current_week || 0);
+      });
+      // Apply per-position cap after sorting by pts desc
+      const posCounts = {};
+      return fasAll.filter(fa => {
+        const pk = fa.position === 'DE' || fa.position === 'DT' ? 'DL' : fa.position === 'CB' ? 'DB' : fa.position;
+        posCounts[pk] = (posCounts[pk] || 0) + 1;
+        return posCounts[pk] <= getPosCap(fa.position);
+      });
+    })(),
+    prev_season: STATE.prevSeasonData.leagueId ? {
+      league_id: STATE.prevSeasonData.leagueId,
+      season: STATE.statsSeason,
+      standings: STATE.prevSeasonData.standings,
+      matchup_weeks_loaded: Object.keys(STATE.prevSeasonData.matchups).length,
+    } : null,
+  };
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${STATE.activeLeague?.name?.replace(/\s+/g,'_') || 'league'}_snapshot_${STATE.currentSeason}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// ══════════════════════════════════════════════
+//  JSON LIGHT DOWNLOAD
+// ══════════════════════════════════════════════
+document.getElementById('btn-json-light').onclick = () => {
+  // Find my roster by matching logged-in username to owner display_name
+  const myUser = Object.values(STATE.leagueUsers).find(u =>
+    u.display_name?.toLowerCase() === STATE.username?.toLowerCase()
+  );
+  const myRoster = myUser
+    ? STATE.rosters.find(r => r.owner_id === myUser.user_id)
+    : null;
+
+  // Standings (sorted by wins then PF)
+  const sortedRosters = [...STATE.rosters].sort((a, b) => {
+    const aw = a.settings?.wins || 0, bw = b.settings?.wins || 0;
+    if (bw !== aw) return bw - aw;
+    return (b.settings?.fpts || 0) - (a.settings?.fpts || 0);
+  });
+  const myRank = myRoster ? sortedRosters.findIndex(r => r.roster_id === myRoster.roster_id) + 1 : null;
+
+  const standingsLight = sortedRosters.map((r, i) => {
+    const { teamName, owner } = getRosterOwner(r);
+    const s = r.settings || {};
+    return {
+      rank: i + 1,
+      roster_id: r.roster_id,
+      team_name: teamName,
+      owner: owner,
+      record: `${s.wins||0}-${s.losses||0}${s.ties?'-'+s.ties:''}`,
+      pf: parseFloat(fmtPts(s.fpts, s.fpts_decimal)) || 0,
+      pa: parseFloat(fmtPts(s.fpts_against, s.fpts_against_decimal)) || 0,
+    };
+  });
+
+  // Power rankings (by starter proj)
+  const powerLight = [...STATE.rosters].sort((a, b) => totalRosterProj(b) - totalRosterProj(a)).map((r, i) => {
+    const { teamName } = getRosterOwner(r);
+    return {
+      power_rank: i + 1,
+      team_name: teamName,
+      starter_proj: totalRosterProj(r),
+      pf: parseFloat(fmtPts(r.settings?.fpts, r.settings?.fpts_decimal)) || 0,
+    };
+  });
+
+  // My roster — full player details
+  const resolveMyPlayers = (pids) => (pids || []).map(pid => {
+    const p = STATE.playerDB[pid] || {};
+    return {
+      player_id: pid,
+      name: p.full_name || (p.first_name ? `${p.first_name} ${p.last_name}` : pid),
+      position: p.position || '?',
+      nfl_team: p.team || '—',
+      age: p.age || null,
+      years_exp: p.years_exp !== undefined ? p.years_exp : null,
+      pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
+      proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+      auction_cost: STATE.auctionCosts[pid]?.cost ?? null,
+      is_keeper: STATE.auctionCosts[pid]?.is_keeper ?? null, // v4.2 — see roster resolver comment for null-vs-false semantics
+      draft_capital: STATE.draftedPicks[pid] || null,
+    };
+  });
+
+  const myRosterLight = myRoster ? {
+    roster_id: myRoster.roster_id,
+    team_name: getRosterOwner(myRoster).teamName,
+    owner: STATE.username,
+    rank: myRank,
+    record: `${myRoster.settings?.wins||0}-${myRoster.settings?.losses||0}`,
+    pf: parseFloat(fmtPts(myRoster.settings?.fpts, myRoster.settings?.fpts_decimal)) || 0,
+    starters: resolveMyPlayers(myRoster.starters),
+    bench: resolveMyPlayers((myRoster.players||[]).filter(pid =>
+      !new Set(myRoster.starters||[]).has(pid) &&
+      !new Set(myRoster.taxi||[]).has(pid) &&
+      !new Set(myRoster.reserve||[]).has(pid)
+    )),
+    taxi: resolveMyPlayers(myRoster.taxi),
+    ir: resolveMyPlayers(myRoster.reserve),
+  } : null;
+
+  // My draft picks (traded picks owned by me)
+  const myPicksLight = (STATE.tradedPicks || [])
+    .filter(pk => pk.owner_id === myRoster?.roster_id)
+    .sort((a, b) => a.season !== b.season ? a.season - b.season : a.round - b.round)
+    .map(pk => {
+      const origRoster = STATE.rosters.find(r => r.roster_id === pk.roster_id || r.roster_id === Number(pk.roster_id));
+      return {
+        season: pk.season,
+        round: pk.round,
+        original_team: origRoster ? getRosterOwner(origRoster).teamName : 'Team ' + pk.roster_id,
+      };
+    });
+
+  // My recent transactions (adds/drops/trades involving my roster)
+  const myRosterId = myRoster?.roster_id;
+  const myTxs = (STATE.transactions || [])
+    .filter(tx => {
+      if (!myRosterId) return false;
+      const inAdds = tx.adds ? Object.values(tx.adds).includes(myRosterId) : false;
+      const inDrops = tx.drops ? Object.values(tx.drops).includes(myRosterId) : false;
+      const inRosters = Array.isArray(tx.roster_ids) && tx.roster_ids.includes(myRosterId);
+      return inAdds || inDrops || inRosters;
+    })
+    .sort((a, b) => (b.created || 0) - (a.created || 0))
+    .slice(0, 25)
+    .map(tx => {
+      const date = tx.created ? new Date(tx.created).toLocaleDateString() : '—';
+      const typeLabel = tx.type === 'trade' ? 'TRADE' : tx.type === 'free_agent' ? 'FA' : tx.type === 'waiver' ? 'WAIVER' : tx.type?.toUpperCase() || 'TX';
+      const adds = tx.adds ? Object.entries(tx.adds).map(([pid, rid]) => {
+        const p = STATE.playerDB[pid] || {};
+        return (p.full_name || pid) + (rid === myRosterId ? ' (IN)' : ' (OUT)');
+      }) : [];
+      const drops = tx.drops ? Object.keys(tx.drops).map(pid => {
+        const p = STATE.playerDB[pid] || {};
+        return (p.full_name || pid) + ' (DROP)';
+      }) : [];
+      const picks = (tx.draft_picks || []).map(pk => `${pk.season} Rd${pk.round}`);
+      return { type: typeLabel, date, moves: [...adds, ...drops, ...picks] };
+    });
+
+  const lightSnapshot = {
+    exported_at: new Date().toISOString(),
+    tool_version: '4.5',
+    export_type: 'LIGHT',
+    summary: {
+      league_name: STATE.activeLeague.name,
+      league_id: STATE.activeLeague.league_id,
+      season: STATE.currentSeason,
+      stats_season: STATE.statsSeason,
+      current_week: STATE.currentWeek,
+      scoring_label: getScoringLabel(STATE.activeLeague),
+      format: STATE.activeLeague.settings?.type === 2 ? 'Dynasty' : STATE.activeLeague.settings?.type === 1 ? 'Keeper' : 'Redraft',
+      total_rosters: STATE.activeLeague.total_rosters,
+      commissioner: STATE.username,
+      has_idp: (STATE.activeLeague.roster_positions || []).some(p => ['DL','LB','DB','IDP_FLEX'].includes(p)),
+      playoff_week_start: STATE.activeLeague.settings?.playoff_week_start || null,
+      playoff_teams: STATE.activeLeague.settings?.playoff_teams || null,
+    },
+    my_team: myRosterLight,
+    standings: standingsLight,
+    power_rankings: powerLight,
+    my_draft_picks: myPicksLight,
+    my_recent_transactions: myTxs,
+  };
+
+  const blob = new Blob([JSON.stringify(lightSnapshot, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${STATE.activeLeague?.name?.replace(/\s+/g,'_') || 'league'}_light_${STATE.currentSeason}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+// ══════════════════════════════════════════════
+//  DRAFT JSON DOWNLOAD (live draft snapshot)
+// ══════════════════════════════════════════════
+document.getElementById('btn-draft-json').onclick = async () => {
+  const btn = document.getElementById('btn-draft-json');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Loading…';
+  try {
+    await downloadDraftSnapshot();
+  } catch(e) {
+    alert('Draft JSON error: ' + (e.message || e));
+  }
+  btn.disabled = false;
+  btn.textContent = origText;
+};
+
+async function downloadDraftSnapshot() {
+  const lg = STATE.activeLeague;
+  const draft = STATE.draftInfo;
+  if (!draft?.draft_id) throw new Error('No draft found for this league.');
+
+  // Fetch live draft detail and all picks made so far
+  const [draftDetail, picksRaw] = await Promise.all([
+    sleeperGet(`/draft/${draft.draft_id}`),
+    sleeperGet(`/draft/${draft.draft_id}/picks`),
+  ]);
+
+  const picks = Array.isArray(picksRaw) ? picksRaw : [];
+  const totalRosters = lg.total_rosters || STATE.rosters.length;
+  const totalRounds = draftDetail?.settings?.rounds || draft?.settings?.rounds || 3;
+  const draftOrder = draftDetail?.draft_order || {}; // user_id -> slot
+  const slotToRoster = draftDetail?.slot_to_roster_id || {}; // slot -> roster_id
+
+  // Build roster_id -> display info map
+  const rosterMap = {};
+  STATE.rosters.forEach(r => {
+    const { teamName, owner } = getRosterOwner(r);
+    rosterMap[r.roster_id] = { teamName, owner, roster_id: r.roster_id };
+  });
+
+  // Build slot -> roster_id map (prefer API slotToRoster, fall back to waiver position)
+  const slotMap = {}; // slot (1-based) -> roster_id
+  if (Object.keys(slotToRoster).length) {
+    for (const [slot, rid] of Object.entries(slotToRoster)) {
+      slotMap[parseInt(slot)] = parseInt(rid);
+    }
+  } else {
+    // Fall back: waiver_position ascending = draft slot ascending
+    const sorted = [...STATE.rosters].sort((a, b) =>
+      (a.settings?.waiver_position || 99) - (b.settings?.waiver_position || 99)
+    );
+    sorted.forEach((r, i) => { slotMap[i + 1] = r.roster_id; });
+  }
+
+  // Traded pick ownership map: key = `${roster_id}_${season}_${round}` -> owner roster_id
+  const tradedOwner = {};
+  (STATE.tradedPicks || []).forEach(tp => {
+    if (String(tp.season) === String(STATE.currentSeason)) {
+      const key = `${tp.roster_id}_${tp.season}_${tp.round}`;
+      tradedOwner[key] = tp.owner_id;
+    }
+  });
+
+  // Resolve who owns a given pick slot in a given round (snake draft)
+  function resolvePickOwner(round, slot) {
+    // Snake: odd rounds go slot 1→N, even rounds go N→1
+    const isEven = round % 2 === 0;
+    const snakeSlot = isEven ? (totalRosters - slot + 1) : slot;
+    const originalRosterId = slotMap[snakeSlot];
+    if (!originalRosterId) return { roster_id: null, teamName: `Slot ${snakeSlot}`, owner: '—', original_roster_id: null };
+    const tradeKey = `${originalRosterId}_${STATE.currentSeason}_${round}`;
+    const ownerRosterId = tradedOwner[tradeKey] ?? originalRosterId;
+    const info = rosterMap[ownerRosterId] || { teamName: 'Team ' + ownerRosterId, owner: '—', roster_id: ownerRosterId };
+    return {
+      roster_id: ownerRosterId,
+      teamName: info.teamName,
+      owner: info.owner,
+      original_roster_id: originalRosterId,
+      original_team: rosterMap[originalRosterId]?.teamName || 'Team ' + originalRosterId,
+    };
+  }
+
+  // Resolve pick number -> round + slot within round
+  function pickNoToRoundSlot(pickNo) {
+    const round = Math.ceil(pickNo / totalRosters);
+    const slot = pickNo - (round - 1) * totalRosters;
+    return { round, slot };
+  }
+
+  // Build picks made array with full player + owner info
+  const picksMade = picks.map(pk => {
+    const pid = pk.player_id ? String(pk.player_id) : null;
+    const p = pid ? (STATE.playerDB[pid] || {}) : {};
+    const name = p.full_name || (p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : pid || '—');
+    const { round, slot } = pickNoToRoundSlot(pk.pick_no || 0);
+    const ownerInfo = rosterMap[pk.roster_id] || { teamName: 'Team ' + pk.roster_id, owner: '—' };
+    const durability = pid ? buildDurabilityProfile(pid, p.position) : null;
+    return {
+      pick_no: pk.pick_no,
+      round,
+      slot_in_round: slot,
+      pick_label: `${round}.${String(slot).padStart(2,'0')}`,
+      player_id: pid,
+      player_name: name,
+      position: p.position || '—',
+      nfl_team: p.team || '—',
+      age: p.age || null,
+      years_exp: p.years_exp !== undefined ? p.years_exp : null,
+      pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
+      stat_splits: pid ? (STATE.playerStatSplits[pid] || null) : null,
+      proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+      auction_cost: pid ? (STATE.auctionCosts[pid]?.cost ?? null) : null,
+      is_keeper: pk.is_keeper === true ? true : (pk.is_keeper === false ? false : null), // v4.2 — straight from Sleeper's pick object, this pick's actual keeper flag
+      drafted_by_roster_id: pk.roster_id,
+      drafted_by_team: ownerInfo.teamName,
+      drafted_by_owner: ownerInfo.owner,
+      season_stat_history: durability ? durability.season_stat_history : null,
+      metadata: pk.metadata || {},
+      is_rookie: p.years_exp === 0, // v2.7
+      player_value: pid ? getPlayerValue(pid) : null, // v2.7
+      pick_value: pickEstimatedValue({ round, slot, totalRosters, totalRounds, season: STATE.currentSeason, currentSeason: STATE.currentSeason }), // v2.7, dynamic decay v3.7
+      pick_value_player_scale: scaledPickValue({ round, slot, totalRosters, totalRounds, season: STATE.currentSeason, currentSeason: STATE.currentSeason }), // v3.1, dynamic decay v3.7
+      fantasy_positions: p.fantasy_positions || null, // v3.1: native Sleeper multi-position eligibility
+    };
+  });
+
+  // Total picks in draft
+  const totalPicks = totalRosters * totalRounds;
+  const picksMadeCount = picks.length;
+  const currentPickNo = picksMadeCount + 1;
+
+  // Build remaining picks array
+  const remainingPicks = [];
+  for (let pickNo = currentPickNo; pickNo <= totalPicks; pickNo++) {
+    const { round, slot } = pickNoToRoundSlot(pickNo);
+    const ownerInfo = resolvePickOwner(round, slot);
+    remainingPicks.push({
+      pick_no: pickNo,
+      round,
+      slot_in_round: slot,
+      pick_label: `${round}.${String(slot).padStart(2,'0')}`,
+      on_clock: pickNo === currentPickNo,
+      roster_id: ownerInfo.roster_id,
+      team_name: ownerInfo.teamName,
+      owner: ownerInfo.owner,
+      original_roster_id: ownerInfo.original_roster_id,
+      original_team: ownerInfo.original_team,
+      is_traded_pick: ownerInfo.roster_id !== ownerInfo.original_roster_id,
+      pick_value: pickEstimatedValue({ round, slot, totalRosters, totalRounds, season: STATE.currentSeason, currentSeason: STATE.currentSeason }), // v2.7, dynamic decay v3.7
+      pick_value_player_scale: scaledPickValue({ round, slot, totalRosters, totalRounds, season: STATE.currentSeason, currentSeason: STATE.currentSeason }), // v3.1, dynamic decay v3.7
+    });
+  }
+
+  // My picks remaining
+  const myUser = Object.values(STATE.leagueUsers).find(u =>
+    u.display_name?.toLowerCase() === STATE.username?.toLowerCase()
+  );
+  const myRoster = myUser ? STATE.rosters.find(r => r.owner_id === myUser.user_id) : null;
+  const myRemainingPicks = remainingPicks.filter(p => p.roster_id === myRoster?.roster_id);
+
+  const draftSnapshot = {
+    exported_at: new Date().toISOString(),
+    tool_version: '4.5',
+    export_type: 'DRAFT_LIVE',
+    league_name: lg.name,
+    league_id: lg.league_id,
+    season: STATE.currentSeason,
+    draft_id: draft.draft_id,
+    draft_type: draftDetail?.type || draft?.type || '—',
+    draft_status: draftDetail?.status || draft?.status || '—',
+    total_rounds: totalRounds,
+    total_teams: totalRosters,
+    total_picks: totalPicks,
+    picks_made: picksMadeCount,
+    picks_remaining: totalPicks - picksMadeCount,
+    current_pick_no: currentPickNo <= totalPicks ? currentPickNo : null,
+    current_pick_label: currentPickNo <= totalPicks ? (() => { const {round,slot} = pickNoToRoundSlot(currentPickNo); return `${round}.${String(slot).padStart(2,'0')}`; })() : 'Draft Complete',
+    on_the_clock: currentPickNo <= totalPicks ? (() => { const {round,slot} = pickNoToRoundSlot(currentPickNo); return resolvePickOwner(round, slot); })() : null,
+    scoring_label: getScoringLabel(STATE.activeLeague),
+    scoring_map: STATE.scoringMap,
+    roster_positions: STATE.activeLeague.roster_positions || [],
+    my_remaining_picks: myRemainingPicks,
+    picks_made_log: picksMade,
+    remaining_picks: remainingPicks,
+    traded_picks_this_season: (STATE.tradedPicks || []).filter(tp => String(tp.season) === String(STATE.currentSeason)),
+    positional_availability: (() => {
+      // Exclude both pre-draft rostered players AND players already taken in this live draft
+      const taken = new Set();
+      STATE.rosters.forEach(r => (r.players || []).forEach(pid => taken.add(pid)));
+      picks.forEach(pk => { if (pk.player_id) taken.add(String(pk.player_id)); });
+      const summary = {};
+      for (const [pid, player] of Object.entries(STATE.playerDB)) {
+        if (taken.has(pid)) continue;
+        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        const pos = player.position || 'UNK';
+        if (!summary[pos]) summary[pos] = { count: 0, top_pts: null, top_name: null };
+        summary[pos].count++;
+        const pts = STATE.playerStats[pid] || 0;
+        if (pts > 0 && (summary[pos].top_pts === null || pts > summary[pos].top_pts)) {
+          summary[pos].top_pts = pts;
+          summary[pos].top_name = player.full_name || (player.first_name ? `${player.first_name} ${player.last_name}` : pid);
+        }
+      }
+      return summary;
+    })(),
+    free_agents: (() => {
+      // All undrafted players: exclude pre-draft rostered AND live draft picks
+      const taken = new Set();
+      STATE.rosters.forEach(r => (r.players || []).forEach(pid => taken.add(pid)));
+      picks.forEach(pk => { if (pk.player_id) taken.add(String(pk.player_id)); });
+      // v2.2: per-position cap (same formula as main export)
+      const rp = STATE.activeLeague.roster_positions || [];
+      const FLEX_ELIGIBLE = { FLEX:['RB','WR','TE'], SUPER_FLEX:['QB','RB','WR','TE'], IDP_FLEX:['LB','DL','DB'], WR_RB_TE:['RB','WR','TE'], WR_RB:['RB','WR'] };
+      const FA_CAP_MULT = 3.5;
+      const posCap = {};
+      for (const slot of rp) {
+        if (FLEX_ELIGIBLE[slot]) {
+          const eligible = FLEX_ELIGIBLE[slot];
+          const share = 1 / eligible.length;
+          for (const ep of eligible) posCap[ep] = (posCap[ep] || 0) + share;
+        } else if (['QB','RB','WR','TE','K','DEF','LB','DL','DB','DE','DT','CB'].includes(slot)) {
+          posCap[slot] = (posCap[slot] || 0) + 1;
+        }
+      }
+      if (posCap.DE || posCap.DT) { posCap.DL = (posCap.DL || 0) + (posCap.DE || 0) + (posCap.DT || 0); delete posCap.DE; delete posCap.DT; }
+      if (posCap.CB) { posCap.DB = (posCap.DB || 0) + posCap.CB; delete posCap.CB; }
+      const getPosCap = pos => {
+        const pk = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+        return Math.ceil((posCap[pk] || 1) * totalRosters * FA_CAP_MULT);
+      };
+      const fasAll = [];
+      for (const [pid, player] of Object.entries(STATE.playerDB)) {
+        if (taken.has(pid)) continue;
+        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        const age = player.age || null;
+        const exp = player.years_exp !== undefined ? player.years_exp : null;
+        const POS_AGE_WARN = { QB:36, RB:29, WR:31, TE:32, DL:32, LB:31, DB:33 };
+        const ageThresh = POS_AGE_WARN[player.position] || 33;
+        const dynastyCaution = age && age >= ageThresh ? `age_${age}` : (exp !== null && exp >= 10 ? `exp_${exp}yr` : undefined);
+        const taxiEligible = exp !== null && exp <= 1 ? true : undefined;
+        const durability = buildDurabilityProfile(pid, player.position);
+        fasAll.push({
+          player_id: pid,
+          name: player.full_name || (player.first_name ? `${player.first_name} ${player.last_name}` : pid),
+          position: player.position || '?',
+          nfl_team: player.team || '—',
+          age,
+          years_exp: exp,
+          pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
+          stat_splits: STATE.playerStatSplits[pid] || null,
+          proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+          // v3.6.1: Sleeper returns a literal 0 (not null/undefined) when it has no real
+          // projection for a player — standard behavior for IDP/K and common for many FAs
+          // generally. A bare 0 could be misread as "projected to score zero points" rather
+          // than "no projection data available." This flag disambiguates that without
+          // altering the underlying value (never fabricate a number).
+          proj_current_week_is_placeholder: STATE.projections[pid] === 0,
+          dynasty_caution: dynastyCaution,
+          taxi_eligible: taxiEligible,
+          injury_status: player.injury_status || null,
+          active_status: player.status || null,
+          games_played_history: durability.games_played_history,
+          pts_history: durability.pts_history,
+          durability_flag: durability.durability_flag,
+          season_stat_history: durability.season_stat_history,
+          injury_status_current: player.injury_status || null,
+          injury_freshness: buildInjuryFreshness(pid), // v2.8
+          weekly_trend: buildWeeklyTrend(pid), // v2.8
+          draft_capital: STATE.draftedPicks[pid] || null,
+          fantasy_positions: player.fantasy_positions || null, // v3.1
+          // v3.6: player_value now computed for free agents using the same
+          // getPlayerValueDetail() path as picks_made_log — includes the
+          // return-yardage layer (v3.5) and IDP/K fallback (v3.2). Previously
+          // missing from FA objects, limiting in-season waiver analysis.
+          player_value: getPlayerValue(pid),
+          player_value_basis: (() => { const d = getPlayerValueDetail(pid); return d ? d.basis : null; })(),
+        });
+      }
+      fasAll.sort((a, b) => {
+        const ap = a.pts_prior_season || 0, bp = b.pts_prior_season || 0;
+        if (bp !== ap) return bp - ap;
+        return (b.proj_current_week || 0) - (a.proj_current_week || 0);
+      });
+      const posCounts = {};
+      return fasAll.filter(fa => {
+        const pk = fa.position === 'DE' || fa.position === 'DT' ? 'DL' : fa.position === 'CB' ? 'DB' : fa.position;
+        posCounts[pk] = (posCounts[pk] || 0) + 1;
+        return posCounts[pk] <= getPosCap(fa.position);
+      });
+    })(),
+    draft_order_slots: Object.entries(slotMap).sort((a,b) => a[0]-b[0]).map(([slot, rid]) => ({
+      slot: parseInt(slot),
+      roster_id: rid,
+      team_name: rosterMap[rid]?.teamName || 'Team ' + rid,
+      owner: rosterMap[rid]?.owner || '—',
+    })),
+    // v2.7: rookie class layer — built from playerDB (years_exp===0), filtered to
+    // skill/IDP positions with a value attached. No scouting-grade data source is
+    // wired in yet; this is roster-DB-only (age/team/proj), flagged per data rule.
+    rookie_class: Object.values(buildRookieClass()).sort((a, b) => (b.player_value || 0) - (a.player_value || 0)),
+    // v2.7: keeper/draft-value calculator for picks already made this draft —
+    // compares player_value vs the pick's estimated cost (pick_value).
+    keeper_value_summary: picksMade
+      .filter(pk => pk.player_id)
+      .map(pk => buildKeeperValueRow(pk.player_id, { round: pk.round, slot: pk.slot_in_round, totalRounds }, totalRosters, STATE.currentSeason)),
+  };
+
+  const blob = new Blob([JSON.stringify(draftSnapshot, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${lg.name?.replace(/\s+/g,'_') || 'league'}_DRAFT_${STATE.currentSeason}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btn-change-league').onclick = () => {
+  // Reset to league picker
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('stats-strip').style.display = 'none';
+  document.getElementById('global-packets').style.display = 'none';
+  document.getElementById('teams-section').style.display = 'none';
+  document.getElementById('league-screen').style.display = 'block';
+  STATE.activeLeague = null;
+};
+
+document.getElementById('btn-logout').onclick = () => {
+  STATE = { username:'', userId:'', leagues:[], activeLeague:null, leagueUsers:{}, rosters:[], matchupsByWeek:{}, transactions:[], tradedPicks:[], draftedPicks:{}, draftInfo:null, playerDB:{}, projections:{}, playerStats:{}, playerStatSplits:{}, statsHistory:{}, scoringMap:{}, currentWeek:1, currentSeason:'', statsSeason:'', auctionCosts:{}, condensedStats:false, weeklyPts:{}, prevSeasonData:{ standings:[], matchups:{}, leagueId:null, rosters:[], users:{} } };
+  document.getElementById('league-screen').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('stats-strip').style.display = 'none';
+  document.getElementById('global-packets').style.display = 'none';
+  document.getElementById('teams-section').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('commissioner-badge').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+  document.getElementById('username-input').value = '';
+  document.getElementById('login-error').textContent = '';
+};
+
+// ══════════════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════════════
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════
+//  PWA SERVICE WORKER REGISTRATION
+// ══════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('MPT: service worker registration failed', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
