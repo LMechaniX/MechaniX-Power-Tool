@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MechaniX Power Tool v5.0</title>
+<title>MechaniX Power Tool v5.1</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" href="icon-192.png" />
@@ -540,7 +540,7 @@
 <header id="app-header">
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="logo">MechaniX <span>Power Tool</span></div>
-    <div class="version">v5.0</div>
+    <div class="version">v5.1</div>
   </div>
   <div class="header-right">
     <div id="commissioner-badge" style="display:none;"></div>
@@ -2599,8 +2599,17 @@ function hungarianMinAssignment(costMatrix) {
 }
 
 function playerProjValue(pid) {
-  // Same fallback rule as before (v2.6): use the real weekly projection when Sleeper
-  // provides a nonzero one; otherwise approximate from prior-season total / 17 games.
+  // v5.1: 2026 season projection (converted to a per-game rate) is now the PRIMARY
+  // basis, replacing the old weekly-proj/2025-total fallback chain as the default —
+  // approved by Leo once season_projection_coverage was confirmed high (90-97%+
+  // rostered-player coverage) across multiple real leagues. This is the value used by
+  // the Hungarian solve (totalRosterProj -> power_rank/starter_proj/Optimal Lineup Score).
+  const seasonProj = STATE.seasonProjections[pid];
+  if (seasonProj !== undefined && seasonProj !== null && seasonProj > 0) {
+    return seasonProj / 17;
+  }
+  // Fallback chain for players Sleeper doesn't have a 2026 season projection for yet
+  // (same logic as before v5.1 — kept as-is, not the primary path anymore):
   const proj = STATE.projections[pid];
   if (proj) return proj;
   const pts = STATE.playerStats[pid];
@@ -3004,7 +3013,7 @@ document.getElementById('btn-json-download').onclick = () => {
 
   const snapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '5.0',
+    tool_version: '5.1',
     standings: standingsFull,
     power_rankings: powerRankingsFull,
     // ── SUMMARY HEADER (v1.2) ──────────────────────────────────
@@ -3293,7 +3302,7 @@ document.getElementById('btn-json-light').onclick = () => {
 
   const lightSnapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '5.0',
+    tool_version: '5.1',
     export_type: 'LIGHT',
     summary: {
       league_name: STATE.activeLeague.name,
@@ -3489,7 +3498,7 @@ async function downloadDraftSnapshot() {
 
   const draftSnapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '5.0',
+    tool_version: '5.1',
     export_type: 'DRAFT_LIVE',
     league_name: lg.name,
     league_id: lg.league_id,
