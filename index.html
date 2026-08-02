@@ -2,22 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>MechaniX Power Tool v4.5</title>
-
-<!-- PWA -->
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#1a6ef5" />
-<meta name="description" content="MechaniX Power Tool — Sleeper league data extraction and analysis" />
-
-<!-- iOS home-screen support (iOS ignores manifest.json, needs its own tags) -->
-<link rel="apple-touch-icon" href="icon-512.png" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="MPT" />
-
-<!-- Android/Chrome home-screen icon fallback -->
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MechaniX Power Tool v5.0</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap');
 
@@ -546,7 +532,7 @@
 <header id="app-header">
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="logo">MechaniX <span>Power Tool</span></div>
-    <div class="version">v4.5</div>
+    <div class="version">v5.0</div>
   </div>
   <div class="header-right">
     <div id="commissioner-badge" style="display:none;"></div>
@@ -678,6 +664,8 @@ let STATE = {
   draftInfo: null,
   playerDB: {},         // player_id -> player obj
   projections: {},      // player_id -> projected pts (upcoming season week)
+  seasonProjections: {}, // v5.0: player_id -> projected pts (full upcoming season total)
+  seasonProjectionMeta: { source: null, weeks_summed: null }, // v5.0: how seasonProjections was derived — 'season_aggregate_endpoint' or 'weekly_sum_fallback' (weeks_summed only set for fallback)
   playerStats: {},      // player_id -> total scored pts (prior season)
   scoringMap: {},       // position_type -> multiplier map
   currentWeek: 1,
@@ -744,6 +732,56 @@ async function fetchProjections(season, week) {
     }
     return map;
   } catch(e) { return {}; }
+}
+
+// v5.0: full-season projection fetch, added to support an eventual switch from
+// 2025-per-game history to 2026 season projections as the Power Rankings basis
+// (not yet used for ranking/value logic — this only populates STATE.seasonProjections
+// and a coverage metric so the switch-over decision can be made from real data).
+//
+// Strategy: try Sleeper's season-level endpoint first (no /week segment — per Sleeper's
+// own API docs this is a valid call shape that should return full-season projection
+// totals directly). This has NOT been live-verified against real 2026 data yet, so we
+// validate the response shape before trusting it. If it's missing, empty, or malformed,
+// fall back to summing all 18 weekly projection fetches per player — slower (18 calls
+// instead of 1) but uses only the already-proven per-week endpoint, so it's safe.
+async function fetchSeasonProjections(season, scoringMap) {
+  // Attempt 1: season-aggregate endpoint (no week param)
+  try {
+    const res = await fetch(`${PROJ_API}/${season}?season_type=regular`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const map = {};
+        let nonZeroCount = 0;
+        for (const p of data) {
+          if (!p.player_id) continue;
+          const pts = scoreStats(p.stats || {}, scoringMap);
+          map[p.player_id] = pts;
+          if (pts > 0) nonZeroCount++;
+        }
+        // Sanity check: if literally everyone came back 0, this endpoint shape
+        // probably isn't returning what we expect — treat as invalid and fall through.
+        if (nonZeroCount > 0) {
+          return { map, meta: { source: 'season_aggregate_endpoint', weeks_summed: null } };
+        }
+      }
+    }
+  } catch(e) { /* fall through to weekly-sum fallback */ }
+
+  // Attempt 2: fallback — sum weeks 1-18 using the proven per-week endpoint
+  const summed = {};
+  let weeksFetched = 0;
+  for (let wk = 1; wk <= 18; wk++) {
+    const rawWeek = await fetchProjections(season, wk);
+    if (Object.keys(rawWeek).length === 0) continue; // week not available yet, skip
+    weeksFetched++;
+    for (const [pid, stats] of Object.entries(rawWeek)) {
+      const pts = scoreStats(stats, scoringMap);
+      summed[pid] = (summed[pid] || 0) + pts;
+    }
+  }
+  return { map: summed, meta: { source: 'weekly_sum_fallback', weeks_summed: weeksFetched } };
 }
 
 // v2.3: IDP tackle stat key normalization. Sleeper's stats payload uses idp_tkl_solo/idp_tkl_ast
@@ -1006,6 +1044,49 @@ function buildFaabEfficiency() {
   });
   result.sort((a, b) => (b.pts_per_dollar ?? -1) - (a.pts_per_dollar ?? -1));
   return result;
+}
+
+// v5.0: coverage metric for STATE.seasonProjections, added to let Leo (or Claude)
+// judge objectively when "a majority of 2026 projections are in" rather than by feel.
+// Coverage = % of ROSTERED players with a nonzero season projection, overall and by
+// position group. Free agents are intentionally excluded — the switch decision should
+// be based on whether starters/rostered depth are covered, not the whole player pool
+// (deep waiver-wire players may never get individual projections, which is normal and
+// shouldn't block the switch).
+function buildProjectionCoverage() {
+  const byPos = {}; // pos -> { total, projected }
+  let total = 0, projected = 0;
+  const seen = new Set();
+  STATE.rosters.forEach(r => {
+    (r.players || []).forEach(pid => {
+      if (seen.has(pid)) return; // a player can't be on two rosters, but guard anyway
+      seen.add(pid);
+      const p = STATE.playerDB[pid] || {};
+      const pos = p.position || 'UNK';
+      if (!byPos[pos]) byPos[pos] = { total: 0, projected: 0 };
+      total++;
+      byPos[pos].total++;
+      const proj = STATE.seasonProjections[pid];
+      const hasProjection = proj !== undefined && proj !== null && proj !== 0;
+      if (hasProjection) { projected++; byPos[pos].projected++; }
+    });
+  });
+  const by_position = {};
+  for (const [pos, v] of Object.entries(byPos)) {
+    by_position[pos] = {
+      total: v.total,
+      projected: v.projected,
+      pct: v.total > 0 ? Math.round((v.projected / v.total) * 1000) / 10 : null,
+    };
+  }
+  return {
+    source: STATE.seasonProjectionMeta.source,
+    weeks_summed: STATE.seasonProjectionMeta.weeks_summed,
+    overall_pct: total > 0 ? Math.round((projected / total) * 1000) / 10 : null,
+    total_rostered_players: total,
+    total_with_projection: projected,
+    by_position,
+  };
 }
 
 // ══════════════════════════════════════════════
@@ -1698,6 +1779,11 @@ async function loadLeague(lg) {
     for (const [pid, stats] of Object.entries(rawProj)) {
       STATE.projections[pid] = scoreStats(stats, STATE.scoringMap);
     }
+
+    setProgress(95, 'Fetching season projections…');
+    const seasonProjResult = await fetchSeasonProjections(STATE.currentSeason, STATE.scoringMap);
+    STATE.seasonProjections = seasonProjResult.map;
+    STATE.seasonProjectionMeta = seasonProjResult.meta;
 
     setProgress(97, 'Fetching prior season data…');
     STATE.prevSeasonData = { standings: [], matchups: {}, leagueId: null, rosters: [], users: {} };
@@ -2805,6 +2891,9 @@ document.getElementById('btn-json-download').onclick = () => {
         pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
         stat_splits: splits,
         proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+        // v5.0: full 2026 season projection total (not yet used for ranking/value — see season_projection_coverage in summary)
+        proj_season: STATE.seasonProjections[pid] !== undefined ? STATE.seasonProjections[pid] : null,
+        proj_season_is_placeholder: STATE.seasonProjections[pid] === 0,
         star: isStar || undefined,
         fa_unsigned: isUnsigned || undefined,
         dynasty_caution: dynastyCaution,
@@ -2907,7 +2996,7 @@ document.getElementById('btn-json-download').onclick = () => {
 
   const snapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '4.5',
+    tool_version: '5.0',
     standings: standingsFull,
     power_rankings: powerRankingsFull,
     // ── SUMMARY HEADER (v1.2) ──────────────────────────────────
@@ -2943,6 +3032,9 @@ document.getElementById('btn-json-download').onclick = () => {
           !rostered.has(pid) && (p.team || STATE.playerStats[pid] || STATE.projections[pid])
         ).length;
       })(),
+      // v5.0: not yet used to drive ranking/value logic — informational only, so the
+      // 2025-history → 2026-projection switch-over can be judged from real coverage data.
+      season_projection_coverage: buildProjectionCoverage(),
     },
     // ───────────────────────────────────────────────────────────
     commissioner: STATE.username,
@@ -3027,6 +3119,9 @@ document.getElementById('btn-json-download').onclick = () => {
           // than "no projection data available." This flag disambiguates that without
           // altering the underlying value (never fabricate a number).
           proj_current_week_is_placeholder: STATE.projections[pid] === 0,
+          // v5.0: full 2026 season projection total (not yet used for ranking/value — see season_projection_coverage in summary)
+          proj_season: STATE.seasonProjections[pid] !== undefined ? STATE.seasonProjections[pid] : null,
+          proj_season_is_placeholder: STATE.seasonProjections[pid] === 0,
           injury_status: player.injury_status || null,
           active_status: player.status || null,
           games_played_history: durability.games_played_history,
@@ -3190,7 +3285,7 @@ document.getElementById('btn-json-light').onclick = () => {
 
   const lightSnapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '4.5',
+    tool_version: '5.0',
     export_type: 'LIGHT',
     summary: {
       league_name: STATE.activeLeague.name,
@@ -3333,6 +3428,8 @@ async function downloadDraftSnapshot() {
       pts_prior_season: STATE.playerStats[pid] !== undefined ? STATE.playerStats[pid] : null,
       stat_splits: pid ? (STATE.playerStatSplits[pid] || null) : null,
       proj_current_week: STATE.projections[pid] !== undefined ? STATE.projections[pid] : null,
+      // v5.0: full 2026 season projection total, informational only
+      proj_season: pid && STATE.seasonProjections[pid] !== undefined ? STATE.seasonProjections[pid] : null,
       auction_cost: pid ? (STATE.auctionCosts[pid]?.cost ?? null) : null,
       is_keeper: pk.is_keeper === true ? true : (pk.is_keeper === false ? false : null), // v4.2 — straight from Sleeper's pick object, this pick's actual keeper flag
       drafted_by_roster_id: pk.roster_id,
@@ -3384,7 +3481,7 @@ async function downloadDraftSnapshot() {
 
   const draftSnapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '4.5',
+    tool_version: '5.0',
     export_type: 'DRAFT_LIVE',
     league_name: lg.name,
     league_id: lg.league_id,
@@ -3402,6 +3499,8 @@ async function downloadDraftSnapshot() {
     on_the_clock: currentPickNo <= totalPicks ? (() => { const {round,slot} = pickNoToRoundSlot(currentPickNo); return resolvePickOwner(round, slot); })() : null,
     scoring_label: getScoringLabel(STATE.activeLeague),
     scoring_map: STATE.scoringMap,
+    // v5.0: same coverage metric as the Full export — previously missing from DRAFT_LIVE
+    season_projection_coverage: buildProjectionCoverage(),
     roster_positions: STATE.activeLeague.roster_positions || [],
     my_remaining_picks: myRemainingPicks,
     picks_made_log: picksMade,
@@ -3479,6 +3578,9 @@ async function downloadDraftSnapshot() {
           // than "no projection data available." This flag disambiguates that without
           // altering the underlying value (never fabricate a number).
           proj_current_week_is_placeholder: STATE.projections[pid] === 0,
+          // v5.0: full 2026 season projection total (not yet used for player_value/ranking — informational)
+          proj_season: STATE.seasonProjections[pid] !== undefined ? STATE.seasonProjections[pid] : null,
+          proj_season_is_placeholder: STATE.seasonProjections[pid] === 0,
           dynasty_caution: dynastyCaution,
           taxi_eligible: taxiEligible,
           injury_status: player.injury_status || null,
@@ -3568,17 +3670,6 @@ document.getElementById('btn-logout').onclick = () => {
 function esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ══════════════════════════════════════════════
-//  PWA SERVICE WORKER REGISTRATION
-// ══════════════════════════════════════════════
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
-      console.warn('MPT: service worker registration failed', err);
-    });
-  });
 }
 </script>
 </body>
