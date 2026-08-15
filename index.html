@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MechaniX Power Tool v5.1</title>
+<title>MechaniX Power Tool v5.3.1</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" href="icon-192.png" />
@@ -540,7 +540,7 @@
 <header id="app-header">
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="logo">MechaniX <span>Power Tool</span></div>
-    <div class="version">v5.1</div>
+    <div class="version">v5.3.1</div>
   </div>
   <div class="header-right">
     <div id="commissioner-badge" style="display:none;"></div>
@@ -870,12 +870,27 @@ const POS_STAT_KEYS = {
   // zero of these events in a real, fully-played game.
   DEF: ['sack','int','fum_rec','ff','safe','blk_kick','def_td'],
 };
+// v5.2: centralized position-bucket normalizer. Previously this DE/DT->DL, CB->DB
+// mapping was copy-pasted inline at 7+ call sites, which is exactly how the v4.3 DEF
+// blackout happened (fix applied in some spots, missed in others). Consolidating here
+// so a future bucket fix only needs to happen once.
+// v5.2 fix: S/FS/SS (Sleeper's raw safety position codes) were never folded into DB,
+// unlike CB. Confirmed real-world impact: safeties tagged S/FS/SS by Sleeper got
+// season_stat_history.stats = null in every export even when pts_history proved they
+// played and scored (e.g. Jaylinn Hawkins, SS/BAL: 244/113/43 pts across 3 seasons,
+// stats always null). Matches Leo's standing rule that CB+DB (and by extension all DB-
+// eligible tags) are a single bucket, never treated separately.
+function normalizePosKey(pos) {
+  if (pos === 'DE' || pos === 'DT') return 'DL';
+  if (pos === 'CB' || pos === 'S' || pos === 'FS' || pos === 'SS') return 'DB';
+  return pos;
+}
 // v3.7: Sleeper's weekly stats payload omits 'gp' for untracked positions (OL, FB, LS, G, T, C, NT, P).
 // The old fallback (any non-empty stats object = played) falsely inflated games-played counts for
 // these positions, since inactive/practice-squad weeks can still produce a non-empty stats object.
 // Fix: only trust key-presence as a "played" signal for positions we actually track stats for.
 function isTrackedStatPosition(pos) {
-  const posKey = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+  const posKey = normalizePosKey(pos);
   return !!POS_STAT_KEYS[posKey];
 }
 function buildDurabilityProfile(pid, pos) {
@@ -921,8 +936,8 @@ function buildDurabilityProfile(pid, pos) {
     }
   }
   // v2.2: season_stat_history — position-specific basic stats for all 3 seasons
-  // Maps DE/DT -> DL, CB -> DB for IDP position key lookup
-  const posKey = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+  // v5.2: now via normalizePosKey() — see its comment for the S/FS/SS fix
+  const posKey = normalizePosKey(pos);
   const statKeys = POS_STAT_KEYS[posKey] || null;
   const season_stat_history = histSeasons.map((yr, i) => {
     const yStr = String(yr);
@@ -1647,7 +1662,7 @@ async function loadLeague(lg) {
               // (see detailed comment there) — Sleeper's gp flag alone isn't a reliable signal
               // for players who missed the week/season on IR.
               const posForGP = STATE.playerDB?.[pid]?.position;
-              const posKeyForGP = posForGP === 'DE' || posForGP === 'DT' ? 'DL' : posForGP === 'CB' ? 'DB' : posForGP;
+              const posKeyForGP = normalizePosKey(posForGP); // v5.2: was inline DE/DT/CB-only ternary
               const trackedKeysForGP = POS_STAT_KEYS[posKeyForGP] || SPLIT_KEYS;
               const hasStatProduction = trackedKeysForGP.some(k => Number(statsObj[k]) > 0);
               // v4.3: DEF carve-out — see detailed comment in the season-history loop above.
@@ -1740,7 +1755,7 @@ async function loadLeague(lg) {
                 // stat (a tackle, a target, a snap-adjacent stat), so false negatives are rare, while
                 // this closes off the systematic false-positive for injured/inactive players.
                 const posForGP = STATE.playerDB?.[pid]?.position;
-                const posKeyForGP = posForGP === 'DE' || posForGP === 'DT' ? 'DL' : posForGP === 'CB' ? 'DB' : posForGP;
+                const posKeyForGP = normalizePosKey(posForGP); // v5.2: was inline DE/DT/CB-only ternary
                 const trackedKeysForGP = POS_STAT_KEYS[posKeyForGP] || SPLIT_KEYS;
                 const hasStatProduction = trackedKeysForGP.some(k => Number(statsObj[k]) > 0);
                 // v4.3: team defenses (DEF) can legitimately record zero of the tracked
@@ -2334,7 +2349,7 @@ function buildPacketFA() {
   for (const [pid, player] of Object.entries(STATE.playerDB)) {
     if (rostered.has(pid)) continue;
     // Include any player with an active NFL team, or with prior season pts, or with a projection
-    if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+    if (player.years_exp !== 0 && !player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap). v5.3: rookies (years_exp===0) never pass this check on team/stats/proj/status alone since they inherently lack prior-season data pre-draft — exempted so undrafted/practice-squad rookies aren't dropped before the auction.
     const proj = STATE.projections[pid] || 0;
     const pts = STATE.playerStats[pid] || 0;
     fas.push({ pid, player, proj, pts });
@@ -3013,7 +3028,7 @@ document.getElementById('btn-json-download').onclick = () => {
 
   const snapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '5.1',
+    tool_version: '5.3.1',
     standings: standingsFull,
     power_rankings: powerRankingsFull,
     // ── SUMMARY HEADER (v1.2) ──────────────────────────────────
@@ -3052,6 +3067,25 @@ document.getElementById('btn-json-download').onclick = () => {
       // v5.0: not yet used to drive ranking/value logic — informational only, so the
       // 2025-history → 2026-projection switch-over can be judged from real coverage data.
       season_projection_coverage: buildProjectionCoverage(),
+      // v5.2: added to help diagnose "player X is missing from free_agents" reports.
+      // raw_player_db_count is the total size of STATE.playerDB straight from Sleeper's
+      // /v1/players/nfl fetch, BEFORE any rostered/cap/status filtering — if a player is
+      // missing from free_agents but the position's rookie_count_by_position is also low
+      // relative to expectation, the gap is upstream (Sleeper's own player DB), not a bug
+      // in MPT's filtering. If raw counts look right but free_agents is thin, the bug is
+      // downstream in this tool's filter/cap logic instead.
+      player_db_diagnostics: (() => {
+        const rookieCountByPos = {};
+        for (const p of Object.values(STATE.playerDB)) {
+          if (p && p.years_exp === 0 && p.position) {
+            rookieCountByPos[p.position] = (rookieCountByPos[p.position] || 0) + 1;
+          }
+        }
+        return {
+          raw_player_db_count: Object.keys(STATE.playerDB).length,
+          rookie_count_by_position: rookieCountByPos,
+        };
+      })(),
     },
     // ───────────────────────────────────────────────────────────
     commissioner: STATE.username,
@@ -3078,7 +3112,7 @@ document.getElementById('btn-json-download').onclick = () => {
       const summary = {};
       for (const [pid, player] of Object.entries(STATE.playerDB)) {
         if (rostered.has(pid)) continue;
-        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        if (player.years_exp !== 0 && !player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap). v5.3: rookies (years_exp===0) never pass this check on team/stats/proj/status alone since they inherently lack prior-season data pre-draft — exempted so undrafted/practice-squad rookies aren't dropped before the auction.
         const pos = player.position || 'UNK';
         if (!summary[pos]) summary[pos] = { count: 0, top_pts: null, top_name: null };
         summary[pos].count++;
@@ -3103,15 +3137,15 @@ document.getElementById('btn-json-download').onclick = () => {
           const eligible = FLEX_ELIGIBLE[slot];
           const share = 1 / eligible.length;
           for (const ep of eligible) posCap[ep] = (posCap[ep] || 0) + share;
-        } else if (['QB','RB','WR','TE','K','DEF','LB','DL','DB','DE','DT','CB'].includes(slot)) {
+        } else if (['QB','RB','WR','TE','K','DEF','LB','DL','DB','DE','DT','CB','S','FS','SS'].includes(slot)) {
           posCap[slot] = (posCap[slot] || 0) + 1;
         }
       }
-      // merge DE/DT->DL, CB->DB for cap purposes
+      // merge DE/DT->DL, CB/S/FS/SS->DB for cap purposes (v5.2: added S/FS/SS, see normalizePosKey)
       if (posCap.DE || posCap.DT) { posCap.DL = (posCap.DL || 0) + (posCap.DE || 0) + (posCap.DT || 0); delete posCap.DE; delete posCap.DT; }
-      if (posCap.CB) { posCap.DB = (posCap.DB || 0) + posCap.CB; delete posCap.CB; }
+      if (posCap.CB || posCap.S || posCap.FS || posCap.SS) { posCap.DB = (posCap.DB || 0) + (posCap.CB || 0) + (posCap.S || 0) + (posCap.FS || 0) + (posCap.SS || 0); delete posCap.CB; delete posCap.S; delete posCap.FS; delete posCap.SS; }
       const getPosCap = pos => {
-        const pk = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+        const pk = normalizePosKey(pos);
         return Math.ceil((posCap[pk] || 1) * teams * FA_CAP_MULT);
       };
       const rostered = new Set();
@@ -3119,7 +3153,7 @@ document.getElementById('btn-json-download').onclick = () => {
       const fasAll = [];
       for (const [pid, player] of Object.entries(STATE.playerDB)) {
         if (rostered.has(pid)) continue;
-        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        if (player.years_exp !== 0 && !player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap). v5.3: rookies (years_exp===0) never pass this check on team/stats/proj/status alone since they inherently lack prior-season data pre-draft — exempted so undrafted/practice-squad rookies aren't dropped before the auction.
         const durability = buildDurabilityProfile(pid, player.position);
         fasAll.push({
           player_id: pid,
@@ -3157,9 +3191,15 @@ document.getElementById('btn-json-download').onclick = () => {
         return (b.proj_current_week || 0) - (a.proj_current_week || 0);
       });
       // Apply per-position cap after sorting by pts desc
+      // v5.3: rookies (years_exp===0) always have pts_prior_season===0, so under a
+      // pts-sorted cap they get pushed below veteran depth and truncated out before
+      // the cap is reached — confirmed via player_db_diagnostics (1,142 raw rookies
+      // vs. a fraction surviving the cap). Rookies are exempted from the cap so every
+      // rookie free agent is always included; the cap still applies to veterans only.
       const posCounts = {};
       return fasAll.filter(fa => {
-        const pk = fa.position === 'DE' || fa.position === 'DT' ? 'DL' : fa.position === 'CB' ? 'DB' : fa.position;
+        if (fa.years_exp === 0) return true;
+        const pk = normalizePosKey(fa.position);
         posCounts[pk] = (posCounts[pk] || 0) + 1;
         return posCounts[pk] <= getPosCap(fa.position);
       });
@@ -3302,7 +3342,7 @@ document.getElementById('btn-json-light').onclick = () => {
 
   const lightSnapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '5.1',
+    tool_version: '5.3.1',
     export_type: 'LIGHT',
     summary: {
       league_name: STATE.activeLeague.name,
@@ -3498,7 +3538,7 @@ async function downloadDraftSnapshot() {
 
   const draftSnapshot = {
     exported_at: new Date().toISOString(),
-    tool_version: '5.1',
+    tool_version: '5.3.1',
     export_type: 'DRAFT_LIVE',
     league_name: lg.name,
     league_id: lg.league_id,
@@ -3518,6 +3558,20 @@ async function downloadDraftSnapshot() {
     scoring_map: STATE.scoringMap,
     // v5.0: same coverage metric as the Full export — previously missing from DRAFT_LIVE
     season_projection_coverage: buildProjectionCoverage(),
+    // v5.2: same diagnostic as the Full export — see its comment. Added here specifically
+    // because this DRAFT_LIVE path is what auction-day exports actually use.
+    player_db_diagnostics: (() => {
+      const rookieCountByPos = {};
+      for (const p of Object.values(STATE.playerDB)) {
+        if (p && p.years_exp === 0 && p.position) {
+          rookieCountByPos[p.position] = (rookieCountByPos[p.position] || 0) + 1;
+        }
+      }
+      return {
+        raw_player_db_count: Object.keys(STATE.playerDB).length,
+        rookie_count_by_position: rookieCountByPos,
+      };
+    })(),
     roster_positions: STATE.activeLeague.roster_positions || [],
     my_remaining_picks: myRemainingPicks,
     picks_made_log: picksMade,
@@ -3531,7 +3585,7 @@ async function downloadDraftSnapshot() {
       const summary = {};
       for (const [pid, player] of Object.entries(STATE.playerDB)) {
         if (taken.has(pid)) continue;
-        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        if (player.years_exp !== 0 && !player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap). v5.3: rookies (years_exp===0) never pass this check on team/stats/proj/status alone since they inherently lack prior-season data pre-draft — exempted so undrafted/practice-squad rookies aren't dropped before the auction.
         const pos = player.position || 'UNK';
         if (!summary[pos]) summary[pos] = { count: 0, top_pts: null, top_name: null };
         summary[pos].count++;
@@ -3558,20 +3612,21 @@ async function downloadDraftSnapshot() {
           const eligible = FLEX_ELIGIBLE[slot];
           const share = 1 / eligible.length;
           for (const ep of eligible) posCap[ep] = (posCap[ep] || 0) + share;
-        } else if (['QB','RB','WR','TE','K','DEF','LB','DL','DB','DE','DT','CB'].includes(slot)) {
+        } else if (['QB','RB','WR','TE','K','DEF','LB','DL','DB','DE','DT','CB','S','FS','SS'].includes(slot)) {
           posCap[slot] = (posCap[slot] || 0) + 1;
         }
       }
+      // v5.2: added S/FS/SS to the DB merge (see normalizePosKey)
       if (posCap.DE || posCap.DT) { posCap.DL = (posCap.DL || 0) + (posCap.DE || 0) + (posCap.DT || 0); delete posCap.DE; delete posCap.DT; }
-      if (posCap.CB) { posCap.DB = (posCap.DB || 0) + posCap.CB; delete posCap.CB; }
+      if (posCap.CB || posCap.S || posCap.FS || posCap.SS) { posCap.DB = (posCap.DB || 0) + (posCap.CB || 0) + (posCap.S || 0) + (posCap.FS || 0) + (posCap.SS || 0); delete posCap.CB; delete posCap.S; delete posCap.FS; delete posCap.SS; }
       const getPosCap = pos => {
-        const pk = pos === 'DE' || pos === 'DT' ? 'DL' : pos === 'CB' ? 'DB' : pos;
+        const pk = normalizePosKey(pos);
         return Math.ceil((posCap[pk] || 1) * totalRosters * FA_CAP_MULT);
       };
       const fasAll = [];
       for (const [pid, player] of Object.entries(STATE.playerDB)) {
         if (taken.has(pid)) continue;
-        if (!player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap)
+        if (player.years_exp !== 0 && !player.team && !STATE.playerStats[pid] && !STATE.projections[pid] && player.status !== 'Active') continue; // v4.3: don't drop active players missing team/stats/proj (e.g. Saquon Barkley export gap). v5.3: rookies (years_exp===0) never pass this check on team/stats/proj/status alone since they inherently lack prior-season data pre-draft — exempted so undrafted/practice-squad rookies aren't dropped before the auction.
         const age = player.age || null;
         const exp = player.years_exp !== undefined ? player.years_exp : null;
         const POS_AGE_WARN = { QB:36, RB:29, WR:31, TE:32, DL:32, LB:31, DB:33 };
@@ -3624,9 +3679,13 @@ async function downloadDraftSnapshot() {
         if (bp !== ap) return bp - ap;
         return (b.proj_current_week || 0) - (a.proj_current_week || 0);
       });
+      // v5.3: same rookie-cap-exemption fix as the main export's free_agents builder —
+      // see that comment for the diagnosis. This DRAFT_LIVE path is the one auction-day
+      // exports actually use, so this is the higher-priority copy of the fix.
       const posCounts = {};
       return fasAll.filter(fa => {
-        const pk = fa.position === 'DE' || fa.position === 'DT' ? 'DL' : fa.position === 'CB' ? 'DB' : fa.position;
+        if (fa.years_exp === 0) return true;
+        const pk = normalizePosKey(fa.position);
         posCounts[pk] = (posCounts[pk] || 0) + 1;
         return posCounts[pk] <= getPosCap(fa.position);
       });
